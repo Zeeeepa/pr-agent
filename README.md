@@ -97,13 +97,13 @@ Supported commands per platform:
 |       | [Utilizing Best Practices](https://qodo-merge-docs.qodo.ai/tools/improve/#best-practices) 💎            |   ✅   |   ✅   |    ✅     |              |
 |       | [PR Chat](https://qodo-merge-docs.qodo.ai/chrome-extension/features/#pr-chat) 💎                        |   ✅   |        |           |              |
 |       | [Suggestion Tracking](https://qodo-merge-docs.qodo.ai/tools/improve/#suggestion-tracking) 💎            |   ✅   |   ✅   |           |              |
-|       | [CI Feedback](https://qodo-merge-docs.qodo.ai/tools/ci_feedback/) 💎                                    |   ✅   |        |           |              |
+|       | [CI Feedback](https://qodo-merge-docs.qodo.ai/tools/ci_feedback/) 💎                                    |   ���   |        |           |              |
 |       | [PR Documentation](https://qodo-merge-docs.qodo.ai/tools/documentation/) 💎                             |   ✅   |   ✅   |           |              |
 |       | [Custom Labels](https://qodo-merge-docs.qodo.ai/tools/custom_labels/) 💎                                |   ✅   |   ✅   |           |              |
 |       | [Analyze](https://qodo-merge-docs.qodo.ai/tools/analyze/) 💎                                            |   ✅   |   ✅   |           |              |
 |       | [Similar Code](https://qodo-merge-docs.qodo.ai/tools/similar_code/) 💎                                  |   ✅   |        |           |              |
 |       | [Custom Prompt](https://qodo-merge-docs.qodo.ai/tools/custom_prompt/) 💎                                |   ✅   |   ✅   |    ✅     |              |
-|       | [Test](https://qodo-merge-docs.qodo.ai/tools/test/) 💎                                                  |   ✅   |   ✅   |           |              |
+|       | [Test](https://qodo-merge-docs.qodo.ai/tools/test/) 💎                                                  |   ✅   |   ��   |           |              |
 |       | [Implement](https://qodo-merge-docs.qodo.ai/tools/implement/) 💎                                        |   ✅   |   ✅   |    ✅     |              |
 |       | [Scan Repo Discussions](https://qodo-merge-docs.qodo.ai/tools/scan_repo_discussions/) 💎                |   ✅   |        |           |              |
 |       | [Auto-Approve](https://qodo-merge-docs.qodo.ai/tools/improve/?h=auto#auto-approval) 💎                  |   ✅   |   ✅   |    ✅     |              |
@@ -266,3 +266,154 @@ https://openai.com/enterprise-privacy
 - Blog: https://www.qodo.ai/blog/
 - Troubleshooting: https://www.qodo.ai/blog/technical-faq-and-troubleshooting/
 - Support: support@qodo.ai
+
+# Event Server Executor for PR-Agent
+
+A powerful extension for PR-Agent that captures GitHub events, stores them in a database, and executes custom code based on configured triggers.
+
+## Overview
+
+The Event Server Executor extension enhances PR-Agent with the following capabilities:
+
+1. **Event Capture and Storage**: Automatically captures all GitHub webhook events and stores them in a database for later analysis and processing.
+
+2. **Trigger Configuration**: Define custom triggers that execute code when specific GitHub events occur (PR creation, comments, pushes, etc.).
+
+3. **Code Execution Engine**: Execute custom Python code, GitHub Actions, or PR-Agent commands in response to GitHub events.
+
+4. **Notification System**: Receive Windows notifications when actions are triggered and completed.
+
+## Features
+
+- **Event Database**: Store all GitHub events with metadata for analysis and processing
+- **Project-Based Organization**: Categorize events by GitHub repository
+- **Flexible Trigger System**: Configure triggers based on event type, repository, and other criteria
+- **Multiple Execution Options**: Run Python code, GitHub Actions, or PR-Agent commands
+- **Web Dashboard**: Manage triggers and view event history through a web interface
+- **Windows Notifications**: Receive desktop notifications for important events
+
+## Installation
+
+### Prerequisites
+
+- Python 3.8+
+- PR-Agent installed
+- GitHub account with webhook access
+
+### Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Zeeeepa/pr-agent.git
+   cd pr-agent
+   ```
+
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Configure environment variables:
+   ```bash
+   # Create a .env file with the following variables
+   GITHUB_TOKEN=your_github_token
+   SUPABASE_URL=your_supabase_url  # Optional, for production use
+   SUPABASE_ANON_KEY=your_supabase_anon_key  # Optional, for production use
+   ```
+
+4. Start the server:
+   ```bash
+   python -m pr_agent.event_server.run
+   ```
+
+## Usage
+
+### Setting Up Webhooks
+
+1. Go to your GitHub repository settings
+2. Navigate to Webhooks
+3. Add a new webhook with the URL of your Event Server
+4. Select the events you want to capture
+5. Save the webhook
+
+### Configuring Triggers
+
+1. Open the web dashboard at `http://localhost:3000/dashboard`
+2. Click "Add Trigger"
+3. Select the repository, event type, and action
+4. Choose the execution type (Python code, GitHub Action, PR-Agent command)
+5. Configure parameters and notifications
+6. Save the trigger
+
+### Example Trigger Configuration
+
+```json
+{
+  "name": "Auto Review PR",
+  "repository": "Zeeeepa/pr-agent",
+  "event_type": "pull_request",
+  "event_action": "opened",
+  "execution_type": "pr_agent_command",
+  "command": "/review",
+  "notifications": {
+    "windows": true,
+    "email": false
+  }
+}
+```
+
+## Development
+
+### Project Structure
+
+```
+pr_agent/
+├── event_server/
+│   ├── __init__.py
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── events.py
+│   │   ├── triggers.py
+│   │   └── executions.py
+│   ├── db/
+│   │   ├── __init__.py
+│   │   ├── models.py
+│   │   ├── sqlite.py
+│   │   └── supabase.py
+│   ├── execution/
+│   │   ├── __init__.py
+│   │   ├── code_executor.py
+│   │   ├── action_executor.py
+│   │   └── command_executor.py
+│   ├── notification/
+│   │   ├── __init__.py
+│   │   └── windows.py
+│   ├── ui/
+│   │   ├── __init__.py
+│   │   ├── dashboard.py
+│   │   └── static/
+│   └── run.py
+```
+
+### Adding New Event Types
+
+To add support for new GitHub event types:
+
+1. Update the event handler in `pr_agent/event_server/api/events.py`
+2. Add the event type to the trigger configuration options
+3. Implement any specific processing logic for the new event type
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgements
+
+- Built on top of [PR-Agent](https://github.com/Zeeeepa/pr-agent)
+- Uses [FastAPI](https://fastapi.tiangolo.com/) for the web server
+- Uses [SQLite](https://www.sqlite.org/index.html) for local development
+- Uses [Supabase](https://supabase.io/) for production database
