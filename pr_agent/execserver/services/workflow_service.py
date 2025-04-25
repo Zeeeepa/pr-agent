@@ -7,6 +7,8 @@ from typing import Dict, Any, Optional, List
 import asyncio
 import json
 
+from pr_agent.servers.github_action_runner import run_action, get_setting_or_env
+
 from ..config import ENABLE_NOTIFICATIONS
 
 
@@ -127,6 +129,64 @@ class WorkflowService:
             if ENABLE_NOTIFICATIONS:
                 await self.show_notification(
                     title=f"Code Execution Failed",
+                    message=f"Repository: {repository}\nError: {str(e)}"
+                )
+            
+            return False
+    
+    async def execute_github_action(self, repository: str, action_name: str, inputs: Dict[str, Any] = None) -> bool:
+        """
+        Execute a GitHub Action using PR-Agent's github_action_runner
+        
+        Args:
+            repository: Repository full name (owner/repo)
+            action_name: Name of the action to execute
+            inputs: Inputs for the action
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Set up environment for the action
+            os.environ["GITHUB_REPOSITORY"] = repository
+            os.environ["GITHUB_EVENT_NAME"] = "workflow_dispatch"
+            
+            # Create a temporary event file
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
+                event_data = {
+                    "repository": {
+                        "full_name": repository
+                    },
+                    "inputs": inputs or {}
+                }
+                json.dump(event_data, temp_file)
+                temp_file_path = temp_file.name
+            
+            try:
+                # Set the event path
+                os.environ["GITHUB_EVENT_PATH"] = temp_file_path
+                
+                # Run the action using PR-Agent's github_action_runner
+                await run_action()
+                
+                # Show notification if enabled
+                if ENABLE_NOTIFICATIONS:
+                    await self.show_notification(
+                        title=f"GitHub Action Executed: {action_name}",
+                        message=f"Repository: {repository}\nStatus: Success"
+                    )
+                
+                return True
+            finally:
+                # Clean up the temporary file
+                os.unlink(temp_file_path)
+        except Exception as e:
+            print(f"Error executing GitHub Action: {e}")
+            
+            # Show notification if enabled
+            if ENABLE_NOTIFICATIONS:
+                await self.show_notification(
+                    title=f"GitHub Action Failed: {action_name}",
                     message=f"Repository: {repository}\nError: {str(e)}"
                 )
             

@@ -12,6 +12,7 @@ from ..services.github_service import GitHubService
 from ..services.event_service import EventService
 from ..services.workflow_service import WorkflowService
 from pr_agent.servers.utils import verify_signature
+from pr_agent.servers.github_app import handle_github_webhooks as pr_agent_handle_github_webhooks
 from ..config import get_setting_or_env
 
 # Create router
@@ -47,7 +48,8 @@ async def handle_github_webhooks(background_tasks: BackgroundTasks, request: Req
     if not event_type:
         raise HTTPException(status_code=400, detail="Missing event type header")
     
-    # Process the webhook in the background
+    # Process the webhook in the background using both PR-Agent's handler and our custom handler
+    background_tasks.add_task(pr_agent_handle_github_webhooks, background_tasks, request, response)
     background_tasks.add_task(event_service.process_webhook, event_type, body)
     
     return {"status": "processing"}

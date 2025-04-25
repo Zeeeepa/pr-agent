@@ -39,7 +39,7 @@ ExeServer is built on top of PR-Agent and leverages its existing functionality f
 
 4. Run the server:
    ```bash
-   python -m ExeServer.app
+   python -m pr_agent.execserver.app
    ```
 
 5. Open the dashboard in your browser:
@@ -90,7 +90,7 @@ The following environment variables can be set in the `.env` file:
 ### Project Structure
 
 ```
-ExeServer/
+pr_agent/execserver/
 ├── __init__.py
 ├── app.py                # Main application entry point
 ├── config.py             # Configuration settings
@@ -108,8 +108,7 @@ ExeServer/
 │   └── workflow_service.py # Workflow execution service
 ├── api/                  # API routes and handlers
 │   ├── __init__.py
-│   ├── routes.py         # API routes
-│   └── handlers.py       # API request handlers
+│   └── routes.py         # API routes
 └── ui/                   # UI components
     ├── __init__.py
     └── static/           # Static UI files
