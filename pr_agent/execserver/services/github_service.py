@@ -10,6 +10,7 @@ from github.WorkflowRun import WorkflowRun as GithubWorkflowRun
 
 from pr_agent.git_providers.github_provider import GithubProvider
 from pr_agent.git_providers.git_provider import GitProvider
+from pr_agent.servers.github_action_runner import get_setting_or_env
 
 from ..models.project import Project
 from ..models.workflow import Workflow, WorkflowRun, WorkflowStatus, WorkflowTrigger
@@ -22,6 +23,10 @@ class GitHubService:
     """
     def __init__(self):
         """Initialize the GitHub service"""
+        # Initialize PR-Agent's GitHub provider
+        self.pr_agent_github_provider = None
+        
+        # Initialize PyGithub client
         if GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY and GITHUB_APP_INSTALLATION_ID:
             # Use GitHub App authentication
             auth = Auth.AppAuth(GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY)
@@ -36,9 +41,6 @@ class GitHubService:
             self.github = Github(GITHUB_TOKEN)
         else:
             raise ValueError("GitHub authentication credentials not provided")
-        
-        # Initialize PR-Agent's GitHub provider
-        self.pr_agent_github_provider = None
     
     def get_pr_agent_github_provider(self, pr_url: Optional[str] = None) -> GithubProvider:
         """
@@ -225,6 +227,7 @@ class GitHubService:
             True if successful, False otherwise
         """
         try:
+            # Use PR-Agent's github_action_runner functionality
             repo = self.github.get_repo(f"{owner}/{name}")
             workflow = repo.get_workflow(int(workflow_id))
             
@@ -273,12 +276,14 @@ class GitHubService:
             List of file information dictionaries
         """
         try:
-            repo = self.github.get_repo(f"{owner}/{name}")
-            pr = repo.get_pull(pr_number)
+            # Use PR-Agent's GitHub provider to get PR files
+            pr_url = f"https://github.com/{owner}/{name}/pull/{pr_number}"
+            github_provider = self.get_pr_agent_github_provider(pr_url)
+            files = github_provider.get_files()
             
-            files = []
-            for file in pr.get_files():
-                files.append({
+            result = []
+            for file in files:
+                result.append({
                     "filename": file.filename,
                     "status": file.status,
                     "additions": file.additions,
@@ -289,7 +294,7 @@ class GitHubService:
                     "contents_url": file.contents_url
                 })
             
-            return files
+            return result
         except Exception as e:
             print(f"Error getting PR files: {e}")
             return []

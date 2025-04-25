@@ -2,6 +2,7 @@ import os
 import sys
 import unittest
 import json
+import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi.testclient import TestClient
 
@@ -29,10 +30,12 @@ class TestExeServer(unittest.TestCase):
         self.assertEqual(response.json(), {"status": "healthy"})
 
     @patch('pr_agent.execserver.api.routes.event_service')
-    def test_github_webhooks(self, mock_event_service):
+    @patch('pr_agent.execserver.api.routes.pr_agent_handle_github_webhooks')
+    def test_github_webhooks(self, mock_pr_agent_handler, mock_event_service):
         """Test the GitHub webhooks endpoint"""
         # Mock the process_webhook method
         mock_event_service.process_webhook = AsyncMock(return_value=(True, None))
+        mock_pr_agent_handler.return_value = {}
 
         # Test payload
         payload = {
@@ -174,6 +177,36 @@ class TestExeServer(unittest.TestCase):
         self.assertEqual(args[0], "print('Hello, World!')")
         self.assertEqual(args[1], "owner/repo")
         self.assertEqual(args[2], payload["event_data"])
+
+    @patch('pr_agent.execserver.services.workflow_service.run_action')
+    def test_execute_github_action(self, mock_run_action):
+        """Test the execute_github_action method"""
+        from pr_agent.execserver.services.workflow_service import WorkflowService
+        
+        # Mock the run_action function
+        mock_run_action.return_value = None
+        
+        # Create a workflow service instance
+        workflow_service = WorkflowService()
+        
+        # Test inputs
+        repository = "owner/repo"
+        action_name = "test-action"
+        inputs = {"param1": "value1", "param2": "value2"}
+        
+        # Call the method
+        result = asyncio.run(workflow_service.execute_github_action(repository, action_name, inputs))
+        
+        # Check the result
+        self.assertTrue(result)
+        
+        # Check that run_action was called
+        mock_run_action.assert_called_once()
+        
+        # Check that environment variables were set correctly
+        self.assertEqual(os.environ["GITHUB_REPOSITORY"], repository)
+        self.assertEqual(os.environ["GITHUB_EVENT_NAME"], "workflow_dispatch")
+        self.assertTrue("GITHUB_EVENT_PATH" in os.environ)
 
 
 if __name__ == '__main__':
