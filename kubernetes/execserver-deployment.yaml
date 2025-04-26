@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pr-agent-execserver
+  labels:
+    app: pr-agent-execserver
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pr-agent-execserver
+  template:
+    metadata:
+      labels:
+        app: pr-agent-execserver
+    spec:
+      containers:
+      - name: pr-agent-execserver
+        image: zeeeepa/pr-agent:latest-execserver
+        ports:
+        - containerPort: 8000
+        env:
+        - name: SUPABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: pr-agent-secrets
+              key: supabase_url
+        - name: SUPABASE_ANON_KEY
+          valueFrom:
+            secretKeyRef:
+              name: pr-agent-secrets
+              key: supabase_anon_key
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: pr-agent-secrets
+              key: github_token
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: pr-agent-secrets
+              key: openai_api_key
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pr-agent-execserver
+spec:
+  selector:
+    app: pr-agent-execserver
+  ports:
+  - port: 80
+    targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pr-agent-execserver
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - execserver.pr-agent.example.com
+    secretName: pr-agent-execserver-tls
+  rules:
+  - host: execserver.pr-agent.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: pr-agent-execserver
+            port:
+              number: 80
