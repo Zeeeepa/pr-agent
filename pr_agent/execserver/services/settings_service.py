@@ -6,8 +6,10 @@ This module provides a service for managing application settings.
 
 import os
 import json
+import requests
 from typing import Dict, Any, Optional
 from supabase import create_client, Client
+from github import Github
 
 class SettingsService:
     """
@@ -63,6 +65,45 @@ class SettingsService:
         
         return True
     
+    async def validate_github_token(self, token: str) -> bool:
+        """
+        Validate GitHub token
+        
+        Args:
+            token: GitHub token to validate
+            
+        Returns:
+            True if valid
+            
+        Raises:
+            Exception: If validation fails
+        """
+        if not token:
+            raise Exception("GitHub token is required")
+        
+        try:
+            # Try to connect to GitHub API
+            g = Github(token)
+            
+            # Test user access
+            user = g.get_user()
+            user_login = user.login
+            
+            # Check rate limit to ensure token is valid
+            rate_limit = g.get_rate_limit()
+            core_rate_limit = rate_limit.core
+            
+            # Check if rate limit is too low (less than 10% remaining)
+            if core_rate_limit.remaining < (core_rate_limit.limit * 0.1):
+                raise Exception(f"GitHub API rate limit is too low: {core_rate_limit.remaining}/{core_rate_limit.limit} remaining")
+            
+            # Try to list repositories to verify permissions
+            repos = list(user.get_repos(limit=1))
+            
+            return True
+        except Exception as e:
+            raise Exception(f"GitHub token validation failed: {str(e)}")
+    
     async def validate_settings(self, settings: Dict[str, str]) -> bool:
         """
         Validate settings
@@ -95,11 +136,7 @@ class SettingsService:
         # Validate GitHub token if provided
         if 'GITHUB_TOKEN' in settings:
             github_token = settings['GITHUB_TOKEN']
-            
-            if not github_token:
-                raise Exception("GitHub token is required")
-            
-            # Additional GitHub token validation could be added here
+            await self.validate_github_token(github_token)
         
         return True
     

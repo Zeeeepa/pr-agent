@@ -67,7 +67,9 @@ async def validate_settings(settings: Dict[str, str]):
         valid = await settings_service.validate_settings(settings)
         return {"valid": valid}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # Return a more detailed error message
+        error_message = str(e)
+        return {"valid": False, "error": error_message, "code": 400}
 
 @router.post("/api/v1/settings")
 async def save_settings(settings: Dict[str, str]):

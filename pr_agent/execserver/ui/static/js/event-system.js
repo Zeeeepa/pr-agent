@@ -511,15 +511,15 @@ function validateSettings() {
     const supabaseApiKey = document.getElementById('supabase-api-key').value;
     const validationMessage = document.getElementById('validation-message');
     
-    // Check if required fields are filled
-    if (!supabaseUrl || !supabaseApiKey) {
-        validationMessage.textContent = 'Error: Supabase URL and API key are required';
-        validationMessage.className = 'validation-message validation-error';
-        validationMessage.style.display = 'block';
-        return;
-    }
+    // Show loading state
+    validationMessage.textContent = 'Validating credentials...';
+    validationMessage.className = 'validation-message';
+    validationMessage.style.display = 'block';
     
-    // Validate settings with the server
+    // Disable buttons during validation
+    document.getElementById('validate-settings').disabled = true;
+    document.getElementById('save-settings').disabled = true;
+    
     fetch(`${EVENT_SYSTEM.apiBaseUrl}/settings/validate`, {
         method: 'POST',
         headers: {
@@ -541,12 +541,20 @@ function validateSettings() {
             validationMessage.className = 'validation-message validation-error';
         }
         validationMessage.style.display = 'block';
+        
+        // Re-enable buttons
+        document.getElementById('validate-settings').disabled = false;
+        document.getElementById('save-settings').disabled = false;
     })
     .catch(error => {
         console.error('Error validating settings:', error);
         validationMessage.textContent = 'Error: Failed to validate settings';
         validationMessage.className = 'validation-message validation-error';
         validationMessage.style.display = 'block';
+        
+        // Re-enable buttons
+        document.getElementById('validate-settings').disabled = false;
+        document.getElementById('save-settings').disabled = false;
     });
 }
 
