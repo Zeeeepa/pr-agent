@@ -82,11 +82,6 @@ ExeServer/
   - Configure workflows
   - View GitHub Actions
 
-- **Project Requirements View**:
-  - Display project requirements with status
-  - Add/edit requirements
-  - Generate tasks with AI assistance
-
 ### 3. UI Components to Implement
 - [ ] Chat Interface with AI Human Agent
   - [ ] Minimize button
@@ -101,11 +96,6 @@ ExeServer/
   - [ ] View GitHub Actions button
   - [ ] Refresh button
   - [ ] Workflow status indicators
-
-- [ ] Project Requirements View
-  - [ ] Add/Edit buttons for requirements
-  - [ ] "Ask AI to Generate Tasks" button
-  - [ ] Status indicators for requirements
 
 ## Integration Points
 1. Use `GithubProvider` for GitHub API interactions
