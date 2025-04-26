@@ -61,7 +61,7 @@ async def handle_github_webhooks(background_tasks: BackgroundTasks, request: Req
     return {"status": "processing"}
 
 # Settings endpoints
-@router.post("/api/v1/validate_settings")
+@router.post("/api/v1/settings/validate")
 async def validate_settings(settings: Dict[str, str]):
     """
     Validate settings
@@ -98,6 +98,11 @@ async def save_settings(settings: Dict[str, str]):
             # Test database connection
             if not await db_service.test_connection():
                 raise HTTPException(status_code=400, detail={"message": "Failed to connect to Supabase with the provided credentials", "code": "db_connection_error"})
+            
+            # Get connection status for detailed error message
+            connection_status = await db_service.get_connection_status()
+            if not connection_status["connected"] and connection_status["error"]:
+                raise HTTPException(status_code=400, detail={"message": connection_status["error"], "code": "db_connection_error"})
         
         return {"status": "success", "message": "Settings saved successfully"}
     except HTTPException:
@@ -134,16 +139,99 @@ async def get_database_status():
     Get database connection status
     """
     try:
-        # Test database connection
-        connection_ok = await db_service.test_connection()
+        # Get detailed connection status
+        connection_status = await db_service.get_connection_status()
         
-        if connection_ok:
+        if connection_status["connected"]:
             return {"status": "connected"}
         else:
-            return {"status": "disconnected"}
+            return {
+                "status": "disconnected", 
+                "error": connection_status["error"] or "Unknown error"
+            }
     except Exception as e:
         logger.error(f"Error checking database status: {str(e)}")
         return {"status": "error", "message": str(e)}
+
+# Database migration status endpoint
+@router.get("/api/v1/database/migrations")
+async def get_migration_status():
+    """
+    Get database migration status
+    """
+    try:
+        # Check if database is connected
+        connection_status = await db_service.get_connection_status()
+        if not connection_status["connected"]:
+            return {
+                "status": "error",
+                "message": "Database not connected",
+                "error": connection_status["error"] or "Unknown error"
+            }
+        
+        # Get migration status
+        if db_service.migration_service:
+            migration_status = await db_service.migration_service.get_migration_status()
+            return {
+                "status": "success",
+                "migrations": migration_status
+            }
+        else:
+            return {
+                "status": "error",
+                "message": "Migration service not initialized"
+            }
+    except Exception as e:
+        logger.error(f"Error checking migration status: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+# Apply migrations endpoint
+@router.post("/api/v1/database/migrations/apply")
+async def apply_migrations():
+    """
+    Apply pending database migrations
+    """
+    try:
+        # Check if database is connected
+        connection_status = await db_service.get_connection_status()
+        if not connection_status["connected"]:
+            raise HTTPException(status_code=400, detail={
+                "message": "Database not connected",
+                "error": connection_status["error"] or "Unknown error",
+                "code": "db_connection_error"
+            })
+        
+        # Apply migrations
+        if db_service.migration_service:
+            success, applied, failed = await db_service.migration_service.apply_migrations()
+            
+            if success:
+                return {
+                    "status": "success",
+                    "message": f"Successfully applied {len(applied)} migrations",
+                    "applied": applied,
+                    "failed": failed
+                }
+            else:
+                return {
+                    "status": "error",
+                    "message": f"Failed to apply migrations. Applied: {len(applied)}, Failed: {len(failed)}",
+                    "applied": applied,
+                    "failed": failed
+                }
+        else:
+            raise HTTPException(status_code=400, detail={
+                "message": "Migration service not initialized",
+                "code": "migration_service_error"
+            })
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error applying migrations: {str(e)}")
+        raise HTTPException(status_code=500, detail={
+            "message": f"Failed to apply migrations: {str(e)}",
+            "code": "server_error"
+        })
 
 # Projects endpoints
 @router.get("/api/v1/projects")
