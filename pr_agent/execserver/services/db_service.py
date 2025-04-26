@@ -1,10 +1,11 @@
 import os
 import uuid
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 import json
 import asyncio
+import pathlib
 
 from supabase import create_client, Client
 
@@ -18,19 +19,33 @@ from .migration_service import MigrationService
 # Set up logging
 logger = logging.getLogger(__name__)
 
+# Required SQL functions for database migrations
+REQUIRED_SQL_FUNCTIONS = [
+    "create_table_if_not_exists",
+    "exec_sql",
+    "drop_table_if_exists"
+]
+
 class DatabaseService:
     """
     Service for managing database operations
     """
-    
-    def __init__(self, settings_service=None):
-        """Initialize the database service"""
-        self.settings_service = settings_service
-        self.supabase = None
-        self.migration_service = None
-        self.connection_error = None
-        self._initialize_supabase()
+    def __init__(self, supabase_url: str = None, supabase_anon_key: str = None):
+        """
+        Initialize the database service
         
+        Args:
+            supabase_url: Supabase URL (optional, can be set later)
+            supabase_anon_key: Supabase anonymous key (optional, can be set later)
+        """
+        self.supabase = None
+        self.supabase_url = supabase_url
+        self.supabase_anon_key = supabase_anon_key
+        
+        # Connect to Supabase if credentials are provided
+        if supabase_url and supabase_anon_key:
+            self._connect_to_supabase(supabase_url, supabase_anon_key, "init")
+    
     def _initialize_supabase(self):
         """Initialize the Supabase client"""
         try:
@@ -173,6 +188,68 @@ class DatabaseService:
             True if connection is successful, False otherwise
         """
         return self._connect_to_supabase(supabase_url, supabase_anon_key, "reconnect")
+    
+    async def check_required_sql_functions(self) -> Tuple[bool, List[str]]:
+        """
+        Check if the required SQL functions exist in the database
+        
+        Returns:
+            Tuple of (all_functions_exist, missing_functions)
+        """
+        if not self.supabase:
+            return False, REQUIRED_SQL_FUNCTIONS
+        
+        try:
+            missing_functions = []
+            
+            # Use a single parameterized query to check for all functions at once
+            query = """
+            SELECT proname 
+            FROM pg_proc p
+            JOIN pg_namespace n ON p.pronamespace = n.oid
+            WHERE n.nspname = 'public'
+            AND p.proname = ANY($1::text[])
+            """
+            
+            try:
+                # We need to use exec_sql to execute the query
+                result = self.supabase.rpc('exec_sql', {
+                    'sql': query,
+                    'params': [REQUIRED_SQL_FUNCTIONS]
+                }).execute()
+                
+                # If we get here, exec_sql exists, but we need to check the result
+                if result.data:
+                    found_functions = {r['proname'] for r in result.data}
+                    missing_functions = [
+                        f for f in REQUIRED_SQL_FUNCTIONS 
+                        if f not in found_functions
+                    ]
+                else:
+                    # No functions found
+                    missing_functions = REQUIRED_SQL_FUNCTIONS
+                    
+            except Exception:
+                # If we get an error, it's likely because exec_sql doesn't exist
+                missing_functions = REQUIRED_SQL_FUNCTIONS
+            
+            all_functions_exist = len(missing_functions) == 0
+            return all_functions_exist, missing_functions
+        except Exception as e:
+            logger.error("Error checking required SQL functions", exc_info=True)
+            return False, REQUIRED_SQL_FUNCTIONS
+    
+    async def get_initdb_script_path(self) -> str:
+        """
+        Get the path to the initdb.py script
+        
+        Returns:
+            Path to the initdb.py script
+        """
+        # Get the path to the execserver directory
+        execserver_dir = pathlib.Path(__file__).parent.parent
+        initdb_path = execserver_dir / "initdb.py"
+        return str(initdb_path)
 
     # Event methods
     async def log_event(self, event_type: str, repository: str, payload: Dict[str, Any]) -> Event:

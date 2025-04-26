@@ -87,3 +87,17 @@ If you encounter issues:
 ## Security Considerations
 
 The SQL functions are created with `SECURITY DEFINER`, which means they run with the privileges of the user who created them. This is necessary for the functions to work properly with the Supabase client, but it's important to be aware of the security implications.
+
+## Automatic Detection
+
+The PR-Agent application will automatically detect if these functions are missing and provide instructions on how to run the initialization script. You'll see log messages like:
+
+```
+WARNING: Required SQL functions are missing: create_table_if_not_exists, exec_sql, drop_table_if_exists
+WARNING: Please run the database initialization script to create these functions:
+WARNING: cd pr_agent/execserver
+WARNING: python initdb.py --url "https://your-supabase-url.supabase.co" --key "your-supabase-anon-key"
+WARNING: Then restart the application.
+```
+
+Follow these instructions to initialize your database properly.
