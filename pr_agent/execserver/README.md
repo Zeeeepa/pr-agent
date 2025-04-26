@@ -10,9 +10,19 @@ ExeServer is an extension to PR-Agent that provides a dashboard for managing Git
 - **AI Assistant**: Chat with an AI assistant to help with project management
 - **Project Requirements**: Track project requirements and their status
 
+## Integration with PR-Agent
+
+ExecServer leverages existing PR-Agent components for better integration and reduced code duplication:
+
+- **GitHub Provider**: Uses `pr_agent.git_providers.github_provider.GithubProvider` for all GitHub API interactions
+- **Webhook Handling**: Integrates with `pr_agent.servers.github_app` for processing GitHub events
+- **GitHub Actions**: Uses `pr_agent.servers.github_action_runner` for executing GitHub Actions
+
+This integration ensures that ExecServer benefits from improvements made to the core PR-Agent components and maintains consistent behavior across the application.
+
 ## Architecture
 
-ExeServer is built on top of PR-Agent and leverages its existing functionality for GitHub integration. The main components are:
+ExecServer is built on top of PR-Agent and leverages its existing functionality for GitHub integration. The main components are:
 
 - **API Server**: FastAPI server that provides REST endpoints for the dashboard
 - **Database**: Supabase database for storing events, triggers, and other data
@@ -26,26 +36,66 @@ ExeServer is built on top of PR-Agent and leverages its existing functionality f
    cd pr-agent
    ```
 
-2. Install dependencies:
+2. Install the package in development mode:
+   ```bash
+   pip install -e .
+   ```
+
+3. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
-3. Set up environment variables:
+4. Set up environment variables:
    ```bash
    cp .env.example .env
    ```
    Edit the `.env` file to add your GitHub token, Supabase URL, and Supabase anonymous key.
 
-4. Run the server:
+5. Run the server from the project root directory:
    ```bash
    python -m pr_agent.execserver.app
    ```
 
-5. Open the dashboard in your browser:
+6. Open the dashboard in your browser:
    ```
    http://localhost:8000
    ```
+
+## Troubleshooting
+
+### ModuleNotFoundError: No module named 'pr_agent'
+
+If you encounter this error when running the application:
+
+```
+ModuleNotFoundError: No module named 'pr_agent'
+```
+
+This typically means the package is not installed in your Python environment. To fix this:
+
+1. Make sure you're in the root directory of the PR-Agent project (not in the pr_agent subdirectory)
+2. Install the package in development mode:
+   ```bash
+   pip install -e .
+   ```
+3. Try running the application again
+
+### Dependency Conflicts
+
+If you encounter dependency conflicts when installing requirements, make sure you're using the latest version of the requirements.txt file. The project requires specific versions of packages to work correctly:
+
+- FastAPI 0.100.0+ (for Pydantic 2.x compatibility)
+- Pydantic 2.x
+- LiteLLM (compatible version)
+
+## Testing
+
+To run the ExecServer tests:
+
+```bash
+pytest tests/execserver/test_execserver.py -v
+```
 
 ## Configuration
 
