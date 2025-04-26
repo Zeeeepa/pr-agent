@@ -4,6 +4,7 @@ import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import json
+import asyncio
 
 from supabase import create_client, Client
 
@@ -27,6 +28,7 @@ class DatabaseService:
         self.settings_service = settings_service
         self.supabase = None
         self.migration_service = None
+        self.connection_error = None
         self._initialize_supabase()
         
     def _initialize_supabase(self):
@@ -39,11 +41,7 @@ class DatabaseService:
                 
                 if supabase_url and supabase_anon_key:
                     logger.info("Initializing Supabase from settings service")
-                    self.supabase = create_client(supabase_url, supabase_anon_key)
-                    self.migration_service = MigrationService(self.supabase)
-                    # Test connection with a simple query
-                    self.supabase.table('events').select('*').limit(1).execute()
-                    logger.info("Supabase initialized successfully from settings service")
+                    self._connect_to_supabase(supabase_url, supabase_anon_key, "settings service")
                     return
             
             # Fall back to config if settings service doesn't have the values
@@ -52,29 +50,60 @@ class DatabaseService:
             
             if supabase_url and supabase_anon_key:
                 logger.info("Initializing Supabase from config")
-                self.supabase = create_client(supabase_url, supabase_anon_key)
-                self.migration_service = MigrationService(self.supabase)
-                
-                # Apply migrations if Supabase is initialized
-                if self.supabase:
-                    self._apply_migrations()
-                
-                # Test connection with a simple query
-                self.supabase.table('events').select('*').limit(1).execute()
-                logger.info("Supabase initialized successfully from config")
+                self._connect_to_supabase(supabase_url, supabase_anon_key, "config")
                 return
                 
             logger.warning("Supabase URL and API key not found in settings or config")
+            self.connection_error = "Supabase credentials not found. Please configure Supabase URL and API key in settings."
         except Exception as e:
             # Log the error but don't raise it - we'll handle missing Supabase in each method
             logger.error(f"Failed to initialize Supabase: {str(e)}")
+            self.connection_error = f"Failed to initialize Supabase: {str(e)}"
             self.supabase = None
+    
+    def _connect_to_supabase(self, url, key, source=""):
+        """
+        Connect to Supabase with the given credentials
+        
+        Args:
+            url: Supabase URL
+            key: Supabase API key
+            source: Source of the credentials (for logging)
+        """
+        try:
+            self.supabase = create_client(url, key)
+            self.migration_service = MigrationService(self.supabase)
+            
+            # Apply migrations if Supabase is initialized
+            if self.supabase:
+                self._apply_migrations()
+            
+            # Test connection with a simple query
+            self.supabase.table('events').select('*').limit(1).execute()
+            logger.info(f"Supabase initialized successfully from {source}")
+            self.connection_error = None
+            return True
+        except Exception as e:
+            error_message = str(e)
+            logger.error(f"Failed to connect to Supabase from {source}: {error_message}")
+            
+            # Set a user-friendly error message based on the exception
+            if "not found" in error_message.lower():
+                self.connection_error = "Failed to connect to Supabase: Table not found. Database may need migration."
+            elif "unauthorized" in error_message.lower() or "authentication" in error_message.lower():
+                self.connection_error = "Failed to connect to Supabase: Invalid API key or unauthorized access."
+            elif "network" in error_message.lower() or "connection" in error_message.lower():
+                self.connection_error = "Failed to connect to Supabase: Network or connection error."
+            else:
+                self.connection_error = f"Failed to connect to Supabase: {error_message}"
+            
+            self.supabase = None
+            return False
     
     def _apply_migrations(self):
         """Apply database migrations"""
         try:
             if self.migration_service:
-                import asyncio
                 asyncio.create_task(self.migration_service.apply_migrations())
         except Exception as e:
             logger.error(f"Failed to apply migrations: {str(e)}")
@@ -91,7 +120,10 @@ class DatabaseService:
             self._initialize_supabase()
             
         if not self.supabase:
-            raise ValueError("Supabase is not initialized. Please provide Supabase URL and API key in settings.")
+            if self.connection_error:
+                raise ValueError(self.connection_error)
+            else:
+                raise ValueError("Supabase is not initialized. Please provide Supabase URL and API key in settings.")
     
     async def test_connection(self) -> bool:
         """
@@ -101,7 +133,13 @@ class DatabaseService:
             True if connection is successful, False otherwise
         """
         try:
-            self._ensure_supabase()
+            if not self.supabase:
+                # Try to initialize again in case settings were updated
+                self._initialize_supabase()
+                
+            if not self.supabase:
+                return False
+                
             # Try a simple query to test the connection
             self.supabase.table("migrations").select("*").limit(1).execute()
             return True
@@ -109,6 +147,33 @@ class DatabaseService:
             logger.error(f"Supabase connection test failed: {str(e)}")
             return False
     
+    async def get_connection_status(self) -> Dict[str, Any]:
+        """
+        Get the current connection status
+        
+        Returns:
+            Dictionary with connection status information
+        """
+        is_connected = await self.test_connection()
+        
+        return {
+            "connected": is_connected,
+            "error": self.connection_error if not is_connected else None
+        }
+    
+    async def reconnect(self, supabase_url: str, supabase_anon_key: str) -> bool:
+        """
+        Reconnect to Supabase with new credentials
+        
+        Args:
+            supabase_url: Supabase URL
+            supabase_anon_key: Supabase API key
+            
+        Returns:
+            True if connection is successful, False otherwise
+        """
+        return self._connect_to_supabase(supabase_url, supabase_anon_key, "reconnect")
+
     # Event methods
     async def log_event(self, event_type: str, repository: str, payload: Dict[str, Any]) -> Event:
         """

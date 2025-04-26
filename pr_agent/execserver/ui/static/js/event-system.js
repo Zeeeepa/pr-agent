@@ -510,17 +510,20 @@ function validateSettings() {
     const supabaseUrl = document.getElementById('supabase-url').value;
     const supabaseApiKey = document.getElementById('supabase-api-key').value;
     const validationMessage = document.getElementById('validation-message');
+    const validateSpinner = document.getElementById('validate-spinner');
     
     // Show loading state
     validationMessage.textContent = 'Validating settings...';
     validationMessage.className = 'validation-message';
     validationMessage.style.display = 'block';
+    validateSpinner.classList.remove('d-none');
     
     // Check if required fields are filled
     if (!supabaseUrl || !supabaseApiKey) {
         validationMessage.textContent = 'Error: Supabase URL and API key are required';
         validationMessage.className = 'validation-message validation-error';
         validationMessage.style.display = 'block';
+        validateSpinner.classList.add('d-none');
         return;
     }
     
@@ -538,11 +541,17 @@ function validateSettings() {
     })
     .then(response => response.json())
     .then(data => {
+        validateSpinner.classList.add('d-none');
+        
         if (data.valid) {
             validationMessage.textContent = 'Verified! All credentials are valid';
             validationMessage.className = 'validation-message validation-success';
+            
+            // Check database status and migrations
+            checkDatabaseStatus();
+            checkMigrationStatus();
         } else {
-            validationMessage.textContent = data.error || 'Error: Invalid credentials';
+            validationMessage.textContent = data.message || 'Error: Invalid credentials';
             validationMessage.className = 'validation-message validation-error';
         }
         validationMessage.style.display = 'block';
@@ -552,6 +561,7 @@ function validateSettings() {
         validationMessage.textContent = 'Error: Failed to validate settings';
         validationMessage.className = 'validation-message validation-error';
         validationMessage.style.display = 'block';
+        validateSpinner.classList.add('d-none');
     });
 }
 
@@ -563,17 +573,20 @@ function saveSettings() {
     const supabaseUrl = document.getElementById('supabase-url').value;
     const supabaseApiKey = document.getElementById('supabase-api-key').value;
     const validationMessage = document.getElementById('validation-message');
+    const saveSpinner = document.getElementById('save-spinner');
     
     // Show loading state
     validationMessage.textContent = 'Saving settings...';
     validationMessage.className = 'validation-message';
     validationMessage.style.display = 'block';
+    saveSpinner.classList.remove('d-none');
     
     // Check if required fields are filled
     if (!supabaseUrl || !supabaseApiKey) {
         validationMessage.textContent = 'Error: Supabase URL and API key are required';
         validationMessage.className = 'validation-message validation-error';
         validationMessage.style.display = 'block';
+        saveSpinner.classList.add('d-none');
         return;
     }
     
@@ -589,12 +602,17 @@ function saveSettings() {
         SUPABASE_ANON_KEY: supabaseApiKey
     })
     .then(success => {
+        saveSpinner.classList.add('d-none');
+        
         if (success) {
             validationMessage.textContent = 'Settings saved successfully';
             validationMessage.className = 'validation-message validation-success';
             
             // Check database status
             checkDatabaseStatus();
+            
+            // Check migration status
+            checkMigrationStatus();
             
             setTimeout(() => {
                 validationMessage.style.display = 'none';
@@ -605,6 +623,7 @@ function saveSettings() {
         }
     })
     .catch(error => {
+        saveSpinner.classList.add('d-none');
         validationMessage.textContent = `Error: ${error.message || 'Failed to save settings'}`;
         validationMessage.className = 'validation-message validation-error';
     });
@@ -661,6 +680,114 @@ function checkDatabaseStatus() {
         .catch(error => {
             console.error('Error checking database status:', error);
         });
+}
+
+/**
+ * Check migration status
+ */
+function checkMigrationStatus() {
+    const migrationStatus = document.getElementById('migration-status');
+    const migrationInfo = document.getElementById('migration-info');
+    const applyMigrationsBtn = document.getElementById('apply-migrations');
+    
+    fetch(`${EVENT_SYSTEM.apiBaseUrl}/database/migrations`)
+        .then(response => response.json())
+        .then(data => {
+            migrationStatus.classList.remove('d-none');
+            
+            if (data.status === 'success') {
+                const migrations = data.migrations;
+                
+                // Create migration status HTML
+                let html = '';
+                
+                if (migrations.pending_count > 0) {
+                    html += `<div class="alert alert-warning">
+                        <strong>Pending Migrations:</strong> ${migrations.pending_count} migrations need to be applied.
+                    </div>`;
+                    
+                    // Show apply migrations button
+                    applyMigrationsBtn.classList.remove('d-none');
+                    
+                    // Add event listener for apply migrations button
+                    applyMigrationsBtn.onclick = applyMigrations;
+                } else {
+                    html += `<div class="alert alert-success">
+                        <strong>Database Up to Date:</strong> All migrations have been applied.
+                    </div>`;
+                    
+                    // Hide apply migrations button
+                    applyMigrationsBtn.classList.add('d-none');
+                }
+                
+                if (migrations.failed_count > 0) {
+                    html += `<div class="alert alert-danger">
+                        <strong>Failed Migrations:</strong> ${migrations.failed_count} migrations failed to apply.
+                    </div>`;
+                }
+                
+                migrationInfo.innerHTML = html;
+            } else {
+                migrationInfo.innerHTML = `<div class="alert alert-danger">
+                    <strong>Error:</strong> ${data.message || 'Failed to check migration status'}
+                </div>`;
+                
+                // Hide apply migrations button
+                applyMigrationsBtn.classList.add('d-none');
+            }
+        })
+        .catch(error => {
+            console.error('Error checking migration status:', error);
+            migrationStatus.classList.remove('d-none');
+            migrationInfo.innerHTML = `<div class="alert alert-danger">
+                <strong>Error:</strong> Failed to check migration status
+            </div>`;
+            
+            // Hide apply migrations button
+            applyMigrationsBtn.classList.add('d-none');
+        });
+}
+
+/**
+ * Apply migrations
+ */
+function applyMigrations() {
+    const migrationInfo = document.getElementById('migration-info');
+    const migrationSpinner = document.getElementById('migration-spinner');
+    
+    // Show loading state
+    migrationSpinner.classList.remove('d-none');
+    
+    fetch(`${EVENT_SYSTEM.apiBaseUrl}/database/migrations/apply`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        migrationSpinner.classList.add('d-none');
+        
+        if (data.status === 'success') {
+            migrationInfo.innerHTML = `<div class="alert alert-success">
+                <strong>Success:</strong> ${data.message}
+            </div>`;
+            
+            // Hide apply migrations button after successful application
+            document.getElementById('apply-migrations').classList.add('d-none');
+            
+            // Refresh database status
+            checkDatabaseStatus();
+        } else {
+            migrationInfo.innerHTML = `<div class="alert alert-danger">
+                <strong>Error:</strong> ${data.message}
+            </div>`;
+        }
+    })
+    .catch(error => {
+        console.error('Error applying migrations:', error);
+        migrationSpinner.classList.add('d-none');
+        migrationInfo.innerHTML = `<div class="alert alert-danger">
+            <strong>Error:</strong> Failed to apply migrations
+        </div>`;
+    });
 }
 
 // Export functions for use in other scripts

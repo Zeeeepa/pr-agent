@@ -727,6 +727,7 @@
         </div>
     </div>
     
+    <!-- Settings dialog -->
     <div id="settings-dialog" class="settings-dialog">
         <div class="settings-dialog-content">
             <div class="settings-dialog-header">
@@ -736,20 +737,37 @@
             <div class="settings-form">
                 <div class="settings-form-group">
                     <label for="github-api-key">GitHub API Key</label>
-                    <input type="password" id="github-api-key" class="form-control" placeholder="Enter GitHub API key">
+                    <input type="password" id="github-api-key" class="form-control" placeholder="Enter GitHub token (starts with ghp_ or github_pat_)">
+                    <small class="form-text text-muted">Personal access token with 'repo' scope</small>
                 </div>
                 <div class="settings-form-group">
                     <label for="supabase-url">Supabase URL</label>
-                    <input type="text" id="supabase-url" class="form-control" placeholder="Enter Supabase URL">
+                    <input type="text" id="supabase-url" class="form-control" placeholder="Enter Supabase URL (https://...)">
+                    <small class="form-text text-muted">URL from your Supabase project settings</small>
                 </div>
                 <div class="settings-form-group">
                     <label for="supabase-api-key">Supabase API Key</label>
-                    <input type="password" id="supabase-api-key" class="form-control" placeholder="Enter Supabase API key">
+                    <input type="password" id="supabase-api-key" class="form-control" placeholder="Enter Supabase anon key (starts with ey...)">
+                    <small class="form-text text-muted">Anon key from your Supabase project settings</small>
                 </div>
                 <div id="validation-message" class="validation-message"></div>
                 <div class="settings-dialog-footer">
-                    <button id="validate-settings" class="btn btn-info">Validate</button>
-                    <button id="save-settings" class="btn btn-primary">Save</button>
+                    <button id="validate-settings" class="btn btn-info">
+                        <span id="validate-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        Validate
+                    </button>
+                    <button id="save-settings" class="btn btn-primary">
+                        <span id="save-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        Save
+                    </button>
+                </div>
+                <div id="migration-status" class="mt-3 d-none">
+                    <h5>Database Status</h5>
+                    <div id="migration-info"></div>
+                    <button id="apply-migrations" class="btn btn-sm btn-warning mt-2 d-none">
+                        <span id="migration-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        Apply Migrations
+                    </button>
                 </div>
             </div>
         </div>

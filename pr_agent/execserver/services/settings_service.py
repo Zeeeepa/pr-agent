@@ -124,6 +124,10 @@ class SettingsService:
             if not supabase_anon_key or len(supabase_anon_key) < 10:
                 return False, "Supabase API key appears to be invalid (too short)"
             
+            # Validate key format (should match Supabase key pattern)
+            if not re.match(r'^ey[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$', supabase_anon_key):
+                return False, "Supabase API key format is invalid. It should be a JWT token."
+            
             try:
                 # Try to connect to Supabase
                 supabase = create_client(supabase_url, supabase_anon_key)
@@ -169,16 +173,50 @@ class SettingsService:
             if not github_token or len(github_token) < 10:
                 return False, "GitHub token appears to be invalid (too short)"
             
+            # Validate token format (should match GitHub token pattern)
+            if not re.match(r'^(ghp_|github_pat_)[A-Za-z0-9_]+$', github_token):
+                return False, "GitHub token format is invalid. It should start with 'ghp_' or 'github_pat_'."
+            
             # Validate token with GitHub API
             try:
                 headers = {
                     'Authorization': f'token {github_token}',
                     'Accept': 'application/vnd.github.v3+json'
                 }
-                response = requests.get('https://api.github.com/user', headers=headers)
+                response = requests.get('https://api.github.com/user', headers=headers, timeout=10)
                 
-                if response.status_code != 200:
+                if response.status_code == 401:
+                    return False, "GitHub token validation failed: Invalid or expired token"
+                elif response.status_code == 403:
+                    return False, "GitHub token validation failed: Token has insufficient permissions"
+                elif response.status_code != 200:
                     return False, f"GitHub token validation failed: {response.json().get('message', 'Unknown error')}"
+                
+                # Check token scopes
+                scopes = response.headers.get('X-OAuth-Scopes', '')
+                required_scopes = ['repo']
+                missing_scopes = [scope for scope in required_scopes if scope not in scopes]
+                
+                if missing_scopes:
+                    return False, f"GitHub token is missing required scopes: {', '.join(missing_scopes)}"
+                
+                # Get user info for display
+                user_data = response.json()
+                username = user_data.get('login', 'Unknown')
+                logger.info(f"GitHub token validated successfully for user: {username}")
+                
+                # Test repository access
+                try:
+                    repo_response = requests.get('https://api.github.com/user/repos?per_page=1', headers=headers, timeout=10)
+                    if repo_response.status_code != 200:
+                        return False, "GitHub token validation failed: Unable to access repositories"
+                except Exception as e:
+                    logger.error(f"Error testing repository access: {str(e)}")
+                    # Don't fail validation for this, as the token might still be valid
+            except requests.exceptions.Timeout:
+                return False, "GitHub token validation failed: Connection timed out"
+            except requests.exceptions.ConnectionError:
+                return False, "GitHub token validation failed: Connection error"
             except Exception as e:
                 return False, f"GitHub token validation failed: {str(e)}"
         
