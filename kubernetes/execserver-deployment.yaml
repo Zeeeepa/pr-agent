@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pr-agent-execserver
+  namespace: pr-agent
+  labels:
+    app: pr-agent-execserver
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pr-agent-execserver
+  template:
+    metadata:
+      labels:
+        app: pr-agent-execserver
+    spec:
+      containers:
+      - name: pr-agent-execserver
+        image: username/pr-agent-execserver:latest
+        command: ["python", "-m", "pr_agent.execserver.app"]
+        ports:
+        - containerPort: 8000
+        - containerPort: 8001
+        env:
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: pr-agent-secrets
+              key: github-token
+        - name: SUPABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: pr-agent-secrets
+              key: supabase-url
+        - name: SUPABASE_ANON_KEY
+          valueFrom:
+            secretKeyRef:
+              name: pr-agent-secrets
+              key: supabase-anon-key
+        - name: UI_PORT
+          value: "8000"
+        - name: API_PORT
+          value: "8001"
+        resources:
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pr-agent-execserver-ui
+  namespace: pr-agent
+spec:
+  selector:
+    app: pr-agent-execserver
+  ports:
+  - port: 80
+    targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pr-agent-execserver-api
+  namespace: pr-agent
+spec:
+  selector:
+    app: pr-agent-execserver
+  ports:
+  - port: 80
+    targetPort: 8001
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pr-agent-execserver
+  namespace: pr-agent
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+  - hosts:
+    - execserver.pr-agent.example.com
+    - api.execserver.pr-agent.example.com
+    secretName: pr-agent-execserver-tls
+  rules:
+  - host: execserver.pr-agent.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: pr-agent-execserver-ui
+            port:
+              number: 80
+  - host: api.execserver.pr-agent.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: pr-agent-execserver-api
+            port:
+              number: 80
