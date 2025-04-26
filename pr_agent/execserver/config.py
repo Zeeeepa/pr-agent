@@ -69,6 +69,10 @@ def get_config(key, default=None):
     return value
 
 
+# Expose Supabase configuration directly for imports
+SUPABASE_URL = get_config("SUPABASE_URL") or os.getenv("SUPABASE_URL")
+SUPABASE_ANON_KEY = get_config("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_ANON_KEY")
+
 # GitHub configuration
 def get_github_token():
     """Get GitHub token with proper error handling."""
@@ -93,12 +97,12 @@ def get_github_app_installation_id():
 # Database configuration
 def get_supabase_url():
     """Get Supabase URL with proper error handling."""
-    return get_config("SUPABASE_URL")
+    return SUPABASE_URL
 
 
 def get_supabase_anon_key():
     """Get Supabase anonymous key with proper error handling."""
-    return get_config("SUPABASE_ANON_KEY")
+    return SUPABASE_ANON_KEY
 
 
 # UI configuration
