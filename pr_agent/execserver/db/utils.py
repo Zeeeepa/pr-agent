@@ -56,9 +56,37 @@ async def create_required_sql_functions(supabase: Client) -> Tuple[bool, List[st
                 """
                 
                 # Use direct SQL execution via the REST API
-                # This is a workaround to create the exec_sql function
-                # We're using the raw REST API to execute SQL directly
-                supabase.table('_dummy_').select('*').execute()
+                # We need to use the SQL API directly to create the function
+                import requests
+                
+                # Get the base URL and auth headers from the Supabase client
+                base_url = supabase.base_url
+                auth_key = supabase.supabase_key
+                
+                # Construct the URL for the SQL endpoint
+                sql_url = f"{base_url}/rest/v1/sql"
+                
+                # Set up headers for authentication
+                headers = {
+                    "apikey": auth_key,
+                    "Authorization": f"Bearer {auth_key}",
+                    "Content-Type": "application/json"
+                }
+                
+                # Make the request to create the exec_sql function
+                response = requests.post(
+                    sql_url,
+                    headers=headers,
+                    json={"query": exec_sql_function}
+                )
+                
+                if response.status_code >= 400:
+                    logger.error(f"Failed to create exec_sql function: Status code {response.status_code}")
+                    if response.status_code < 500:  # Don't log potentially sensitive response for server errors
+                        logger.error(f"Response: {response.text}")
+                    return False, [f"Failed to create exec_sql function: Status code {response.status_code}"]
+                
+                logger.info("exec_sql function created successfully")
                 
                 # Now that we have exec_sql, we can use it to create the other functions
                 response = supabase.postgrest.rpc('exec_sql', {'sql': sql}).execute()
