@@ -6,38 +6,89 @@
     <title>PR-Agent Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #212529;
+            --card-bg: #ffffff;
+            --card-header-bg: #f8f9fa;
+            --border-color: #dee2e6;
+            --chat-ai-bg: #f8f9fa;
+            --chat-user-bg: #e9ecef;
+            --primary-color: #0d6efd;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --secondary-color: #6c757d;
+            --info-color: #0dcaf0;
+            --warning-color: #ffc107;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #212529;
+            --text-color: #f8f9fa;
+            --card-bg: #343a40;
+            --card-header-bg: #2c3136;
+            --border-color: #495057;
+            --chat-ai-bg: #2c3136;
+            --chat-user-bg: #343a40;
+            --primary-color: #0d6efd;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --secondary-color: #adb5bd;
+            --info-color: #0dcaf0;
+            --warning-color: #ffc107;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             padding-top: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: all 0.3s ease;
         }
         .card {
             margin-bottom: 20px;
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
         }
         .card-header {
-            background-color: #f8f9fa;
+            background-color: var(--card-header-bg);
             font-weight: bold;
+            border-bottom-color: var(--border-color);
         }
         .nav-tabs .nav-link.active {
             font-weight: bold;
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+        .nav-tabs .nav-link {
+            color: var(--text-color);
+        }
+        .table {
+            color: var(--text-color);
         }
         .table th {
-            background-color: #f8f9fa;
+            background-color: var(--card-header-bg);
+        }
+        .table td, .table th {
+            border-color: var(--border-color);
         }
         .status-active {
-            color: #28a745;
+            color: var(--success-color);
         }
         .status-inactive {
-            color: #dc3545;
+            color: var(--danger-color);
         }
         .chat-container {
             height: 400px;
             overflow-y: auto;
-            border: 1px solid #dee2e6;
+            border: 1px solid var(--border-color);
             border-radius: 5px;
             padding: 10px;
             margin-bottom: 10px;
+            background-color: var(--card-bg);
         }
         .chat-message {
             margin-bottom: 10px;
@@ -45,10 +96,10 @@
             border-radius: 5px;
         }
         .chat-message.ai {
-            background-color: #f8f9fa;
+            background-color: var(--chat-ai-bg);
         }
         .chat-message.user {
-            background-color: #e9ecef;
+            background-color: var(--chat-user-bg);
             text-align: right;
         }
         .event-list {
@@ -77,12 +128,17 @@
         .flow-arrow {
             color: #6c757d;
             margin: 0 10px;
+
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1 class="mb-4">PR-Agent Dashboard</h1>
+        
+        <button id="theme-toggle" class="btn btn-outline-secondary theme-toggle">
+            <span id="theme-icon">🌙</span> <span id="theme-text">Dark Mode</span>
+        </button>
         
         <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
             <li class="nav-item" role="presentation">
@@ -97,13 +153,9 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat" type="button" role="tab" aria-controls="chat" aria-selected="false">AI Assistant</button>
             </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="requirements-tab" data-bs-toggle="tab" data-bs-target="#requirements" type="button" role="tab" aria-controls="requirements" aria-selected="false">Project Requirements</button>
-            </li>
         </ul>
         
         <div class="tab-content" id="myTabContent">
-            <!-- Home Tab -->
             <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
                 <div class="row">
                     <div class="col-md-6">
@@ -230,7 +282,6 @@
                 </div>
             </div>
             
-            <!-- Event Triggers Tab -->
             <div class="tab-pane fade" id="triggers" role="tabpanel" aria-labelledby="triggers-tab">
                 <div class="d-flex justify-content-between mb-3">
                     <h3>Event Triggers</h3>
@@ -354,7 +405,6 @@
                 </div>
             </div>
             
-            <!-- GitHub Workflows Tab -->
             <div class="tab-pane fade" id="workflows" role="tabpanel" aria-labelledby="workflows-tab">
                 <h3 class="mb-3">GitHub Workflow Management</h3>
                 
@@ -460,6 +510,7 @@
             </div>
             
             <!-- AI Assistant Chat Tab -->
+
             <div class="tab-pane fade" id="chat" role="tabpanel" aria-labelledby="chat-tab">
                 <div class="d-flex justify-content-between mb-3">
                     <h3>Chat with AI Human Agent</h3>
@@ -494,7 +545,6 @@
                 </div>
             </div>
             
-            <!-- Project Requirements Tab -->
             <div class="tab-pane fade" id="requirements" role="tabpanel" aria-labelledby="requirements-tab">
                 <div class="d-flex justify-content-between mb-3">
                     <h3>Project Requirements</h3>
@@ -593,5 +643,6 @@
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/event-system.js"></script>
+
 </body>
 </html>

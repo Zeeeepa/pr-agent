@@ -1,0 +1,189 @@
+name: Event Triggers
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'pr_agent/execserver/services/**'
+      - 'pr_agent/execserver/models/**'
+      - '.github/workflows/event-triggers.yaml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'pr_agent/execserver/services/**'
+      - 'pr_agent/execserver/models/**'
+      - '.github/workflows/event-triggers.yaml'
+  workflow_dispatch:
+    inputs:
+      test_event:
+        description: 'Test event type'
+        required: true
+        default: 'pull_request'
+        type: choice
+        options:
+          - push
+          - pull_request
+          - issue_comment
+          - pull_request_review
+          - release
+
+jobs:
+  validate:
+    name: Validate Event Handlers
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest pytest-asyncio
+
+      - name: Validate event handlers
+        run: |
+          pytest -xvs tests/execserver/test_event_service.py
+
+  test-triggers:
+    name: Test Event Triggers
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Create test event payload
+        run: |
+          mkdir -p test_events
+          EVENT_TYPE="${{ github.event.inputs.test_event }}"
+          
+          if [ "$EVENT_TYPE" == "pull_request" ]; then
+            cat > test_events/test_event.json << EOF
+          {
+            "action": "opened",
+            "number": 1,
+            "pull_request": {
+              "title": "Test PR",
+              "body": "This is a test PR",
+              "html_url": "https://github.com/${{ github.repository }}/pull/1"
+            },
+            "repository": {
+              "full_name": "${{ github.repository }}"
+            }
+          }
+          EOF
+          elif [ "$EVENT_TYPE" == "push" ]; then
+            cat > test_events/test_event.json << EOF
+          {
+            "ref": "refs/heads/main",
+            "repository": {
+              "full_name": "${{ github.repository }}"
+            },
+            "commits": [
+              {
+                "id": "test-commit-id",
+                "message": "Test commit"
+              }
+            ]
+          }
+          EOF
+          elif [ "$EVENT_TYPE" == "issue_comment" ]; then
+            cat > test_events/test_event.json << EOF
+          {
+            "action": "created",
+            "issue": {
+              "number": 1,
+              "html_url": "https://github.com/${{ github.repository }}/issues/1"
+            },
+            "comment": {
+              "body": "Test comment"
+            },
+            "repository": {
+              "full_name": "${{ github.repository }}"
+            }
+          }
+          EOF
+          fi
+
+      - name: Test event processing
+        run: |
+          python -c "
+          import asyncio
+          import json
+          from pr_agent.execserver.services.db_service import DatabaseService
+          from pr_agent.execserver.services.github_service import GitHubService
+          from pr_agent.execserver.services.workflow_service import WorkflowService
+          from pr_agent.execserver.services.event_service import EventService
+          
+          async def test_event():
+              db_service = DatabaseService()
+              github_service = GitHubService()
+              workflow_service = WorkflowService()
+              event_service = EventService(db_service, github_service, workflow_service)
+              
+              with open('test_events/test_event.json', 'r') as f:
+                  payload = json.load(f)
+              
+              event_type = '${{ github.event.inputs.test_event }}'
+              success, error = await event_service.process_webhook(event_type, payload)
+              
+              print(f'Event processing result: {success}')
+              if error:
+                  print(f'Error: {error}')
+          
+          asyncio.run(test_event())
+          "
+
+  integration:
+    name: UI Integration Test
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest pytest-asyncio httpx
+
+      - name: Test API endpoints
+        run: |
+          # Start the server in the background
+          python -m pr_agent.execserver.app &
+          SERVER_PID=$!
+          
+          # Wait for server to start
+          sleep 5
+          
+          # Run integration tests
+          pytest -xvs tests/execserver/test_api_integration.py
+          
+          # Kill the server
+          kill $SERVER_PID
