@@ -1,222 +1,190 @@
 import os
-import sys
-import importlib.util
-import subprocess
-import tempfile
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List, Optional, Union
 import asyncio
 import json
+import time
+from datetime import datetime
 
-from pr_agent.servers.github_action_runner import run_action, get_setting_or_env
+from github.Repository import Repository
+from github.Workflow import Workflow as GithubWorkflow
+from github.WorkflowRun import WorkflowRun as GithubWorkflowRun
 
-from ..config import ENABLE_NOTIFICATIONS
-
+from ..models.workflow import Workflow, WorkflowRun, WorkflowStatus, WorkflowTrigger
+from ..config import get_enable_notifications
+from .github_service import GitHubService
+from .notification_service import NotificationService
 
 class WorkflowService:
     """
-    Service for executing workflows and codefiles
+    Service for managing GitHub Actions workflows
     """
     def __init__(self):
         """Initialize the workflow service"""
-        pass
+        self.github_service = GitHubService()
+        self.notification_service = NotificationService()
     
-    async def execute_codefile(self, filepath: str, repository: str, event_data: Dict[str, Any]) -> bool:
+    async def get_workflows(self, owner: str, name: str) -> List[Workflow]:
         """
-        Execute a Python codefile
+        Get all workflows for a repository
         
         Args:
-            filepath: Path to the codefile
-            repository: Repository full name (owner/repo)
-            event_data: Event data to pass to the codefile
+            owner: Repository owner
+            name: Repository name
+            
+        Returns:
+            List of Workflow objects
+        """
+        return await self.github_service.get_workflows(owner, name)
+    
+    async def get_workflow_runs(self, owner: str, name: str, workflow_id: Optional[str] = None, 
+                              limit: int = 10) -> List[WorkflowRun]:
+        """
+        Get workflow runs for a repository
+        
+        Args:
+            owner: Repository owner
+            name: Repository name
+            workflow_id: Optional workflow ID to filter by
+            limit: Maximum number of runs to return
+            
+        Returns:
+            List of WorkflowRun objects
+        """
+        return await self.github_service.get_workflow_runs(owner, name, workflow_id, limit)
+    
+    async def trigger_workflow(self, owner: str, name: str, workflow_id: str, 
+                             ref: Optional[str] = None, inputs: Optional[Dict[str, Any]] = None) -> bool:
+        """
+        Trigger a workflow
+        
+        Args:
+            owner: Repository owner
+            name: Repository name
+            workflow_id: Workflow ID
+            ref: Git reference (branch, tag, commit)
+            inputs: Workflow inputs
             
         Returns:
             True if successful, False otherwise
         """
-        try:
-            if not os.path.exists(filepath):
-                print(f"Codefile not found: {filepath}")
-                return False
-            
-            # Create a temporary file with the event data
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
-                json.dump(event_data, temp_file)
-                temp_file_path = temp_file.name
-            
-            try:
-                # Execute the codefile with the event data as an argument
-                result = subprocess.run(
-                    [sys.executable, filepath, temp_file_path, repository],
-                    capture_output=True,
-                    text=True,
-                    check=True
+        result = await self.github_service.trigger_workflow(owner, name, workflow_id, ref, inputs)
+        
+        if result:
+            # Send notification if enabled
+            if get_enable_notifications():
+                await self.notification_service.send_workflow_triggered_notification(
+                    owner, name, workflow_id, ref, inputs
                 )
-                
-                print(f"Codefile executed successfully: {result.stdout}")
-                
-                # Show notification if enabled
-                if ENABLE_NOTIFICATIONS:
-                    await self.show_notification(
-                        title=f"Workflow Executed: {os.path.basename(filepath)}",
-                        message=f"Repository: {repository}\nStatus: Success"
+        
+        return result
+    
+    async def monitor_workflow_run(self, owner: str, name: str, run_id: str, 
+                                 timeout: int = 600, check_interval: int = 10) -> Dict[str, Any]:
+        """
+        Monitor a workflow run until completion or timeout
+        
+        Args:
+            owner: Repository owner
+            name: Repository name
+            run_id: Workflow run ID
+            timeout: Maximum time to wait in seconds
+            check_interval: Time between checks in seconds
+            
+        Returns:
+            Dictionary with status information
+        """
+        start_time = time.time()
+        elapsed_time = 0
+        
+        while elapsed_time < timeout:
+            # Get the latest run status
+            runs = await self.github_service.get_workflow_runs(owner, name)
+            current_run = next((run for run in runs if str(run.id) == run_id), None)
+            
+            if not current_run:
+                return {"status": "error", "message": f"Run {run_id} not found"}
+            
+            # Check if the run has completed
+            if current_run.status == WorkflowStatus.COMPLETED:
+                # Send notification if enabled
+                if get_enable_notifications():
+                    await self.notification_service.send_workflow_completed_notification(
+                        owner, name, run_id, current_run.conclusion
                     )
                 
-                return True
-            finally:
-                # Clean up the temporary file
-                os.unlink(temp_file_path)
-        except Exception as e:
-            print(f"Error executing codefile: {e}")
-            
-            # Show notification if enabled
-            if ENABLE_NOTIFICATIONS:
-                await self.show_notification(
-                    title=f"Workflow Failed: {os.path.basename(filepath)}",
-                    message=f"Repository: {repository}\nError: {str(e)}"
-                )
-            
-            return False
-    
-    async def execute_python_code(self, code: str, repository: str, event_data: Dict[str, Any]) -> bool:
-        """
-        Execute Python code directly
-        
-        Args:
-            code: Python code to execute
-            repository: Repository full name (owner/repo)
-            event_data: Event data to pass to the code
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            # Create a temporary file with the code
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as temp_code_file:
-                temp_code_file.write(code)
-                temp_code_path = temp_code_file.name
-            
-            # Create a temporary file with the event data
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_data_file:
-                json.dump(event_data, temp_data_file)
-                temp_data_path = temp_data_file.name
-            
-            try:
-                # Execute the code with the event data as an argument
-                result = subprocess.run(
-                    [sys.executable, temp_code_path, temp_data_path, repository],
-                    capture_output=True,
-                    text=True,
-                    check=True
-                )
-                
-                print(f"Code executed successfully: {result.stdout}")
-                
-                # Show notification if enabled
-                if ENABLE_NOTIFICATIONS:
-                    await self.show_notification(
-                        title=f"Code Executed Successfully",
-                        message=f"Repository: {repository}\nStatus: Success"
-                    )
-                
-                return True
-            finally:
-                # Clean up the temporary files
-                os.unlink(temp_code_path)
-                os.unlink(temp_data_path)
-        except Exception as e:
-            print(f"Error executing code: {e}")
-            
-            # Show notification if enabled
-            if ENABLE_NOTIFICATIONS:
-                await self.show_notification(
-                    title=f"Code Execution Failed",
-                    message=f"Repository: {repository}\nError: {str(e)}"
-                )
-            
-            return False
-    
-    async def execute_github_action(self, repository: str, action_name: str, inputs: Dict[str, Any] = None) -> bool:
-        """
-        Execute a GitHub Action using PR-Agent's github_action_runner
-        
-        Args:
-            repository: Repository full name (owner/repo)
-            action_name: Name of the action to execute
-            inputs: Inputs for the action
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            # Set up environment for the action
-            os.environ["GITHUB_REPOSITORY"] = repository
-            os.environ["GITHUB_EVENT_NAME"] = "workflow_dispatch"
-            
-            # Create a temporary event file
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
-                event_data = {
-                    "repository": {
-                        "full_name": repository
-                    },
-                    "inputs": inputs or {}
+                return {
+                    "status": "completed",
+                    "conclusion": current_run.conclusion,
+                    "html_url": current_run.html_url,
+                    "elapsed_time": elapsed_time
                 }
-                json.dump(event_data, temp_file)
-                temp_file_path = temp_file.name
             
-            try:
-                # Set the event path
-                os.environ["GITHUB_EVENT_PATH"] = temp_file_path
-                
-                # Run the action using PR-Agent's github_action_runner
-                await run_action()
-                
-                # Show notification if enabled
-                if ENABLE_NOTIFICATIONS:
-                    await self.show_notification(
-                        title=f"GitHub Action Executed: {action_name}",
-                        message=f"Repository: {repository}\nStatus: Success"
-                    )
-                
-                return True
-            finally:
-                # Clean up the temporary file
-                os.unlink(temp_file_path)
-        except Exception as e:
-            print(f"Error executing GitHub Action: {e}")
-            
-            # Show notification if enabled
-            if ENABLE_NOTIFICATIONS:
-                await self.show_notification(
-                    title=f"GitHub Action Failed: {action_name}",
-                    message=f"Repository: {repository}\nError: {str(e)}"
-                )
-            
-            return False
+            # Wait before checking again
+            await asyncio.sleep(check_interval)
+            elapsed_time = time.time() - start_time
+        
+        # If we've reached here, the workflow has timed out
+        if get_enable_notifications():
+            await self.notification_service.send_workflow_timeout_notification(
+                owner, name, run_id
+            )
+        
+        return {"status": "timeout", "message": f"Workflow run did not complete within {timeout} seconds"}
     
-    async def show_notification(self, title: str, message: str) -> None:
+    async def cancel_workflow_run(self, owner: str, name: str, run_id: str) -> bool:
         """
-        Show a desktop notification
+        Cancel a workflow run
         
         Args:
-            title: Notification title
-            message: Notification message
+            owner: Repository owner
+            name: Repository name
+            run_id: Workflow run ID
+            
+        Returns:
+            True if successful, False otherwise
         """
-        if sys.platform == 'win32':
-            # Windows notification
-            try:
-                from win10toast import ToastNotifier
-                toaster = ToastNotifier()
-                toaster.show_toast(title, message, duration=5)
-            except ImportError:
-                print("win10toast not installed. Install with: pip install win10toast")
-        elif sys.platform == 'darwin':
-            # macOS notification
-            try:
-                subprocess.run(['osascript', '-e', f'display notification "{message}" with title "{title}"'])
-            except Exception as e:
-                print(f"Error showing macOS notification: {e}")
-        else:
-            # Linux notification
-            try:
-                subprocess.run(['notify-send', title, message])
-            except Exception as e:
-                print(f"Error showing Linux notification: {e}")
+        try:
+            repo = self.github_service.github.get_repo(f"{owner}/{name}")
+            run = repo.get_workflow_run(int(run_id))
+            result = run.cancel()
+            
+            if result:
+                # Send notification if enabled
+                if get_enable_notifications():
+                    await self.notification_service.send_workflow_cancelled_notification(
+                        owner, name, run_id
+                    )
+            
+            return result
+        except Exception as e:
+            print(f"Error cancelling workflow run: {e}")
+            return False
+    
+    async def rerun_workflow_run(self, owner: str, name: str, run_id: str) -> bool:
+        """
+        Rerun a workflow run
+        
+        Args:
+            owner: Repository owner
+            name: Repository name
+            run_id: Workflow run ID
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            repo = self.github_service.github.get_repo(f"{owner}/{name}")
+            run = repo.get_workflow_run(int(run_id))
+            result = run.rerun()
+            
+            if result:
+                # Send notification if enabled
+                if get_enable_notifications():
+                    await self.notification_service.send_workflow_rerun_notification(
+                        owner, name, run_id
+                    )
+            
+            return result
+        except Exception as e:
+            print(f"Error rerunning workflow run: {e}")
+            return False
