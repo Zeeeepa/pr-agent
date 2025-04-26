@@ -9,7 +9,7 @@ import json
 
 from pr_agent.servers.github_action_runner import run_action, get_setting_or_env
 
-from ..config import ENABLE_NOTIFICATIONS
+from ..config import get_enable_notifications
 
 
 class WorkflowService:
@@ -54,7 +54,7 @@ class WorkflowService:
                 print(f"Codefile executed successfully: {result.stdout}")
                 
                 # Show notification if enabled
-                if ENABLE_NOTIFICATIONS:
+                if get_enable_notifications():
                     await self.show_notification(
                         title=f"Workflow Executed: {os.path.basename(filepath)}",
                         message=f"Repository: {repository}\nStatus: Success"
@@ -68,7 +68,7 @@ class WorkflowService:
             print(f"Error executing codefile: {e}")
             
             # Show notification if enabled
-            if ENABLE_NOTIFICATIONS:
+            if get_enable_notifications():
                 await self.show_notification(
                     title=f"Workflow Failed: {os.path.basename(filepath)}",
                     message=f"Repository: {repository}\nError: {str(e)}"
@@ -111,7 +111,7 @@ class WorkflowService:
                 print(f"Code executed successfully: {result.stdout}")
                 
                 # Show notification if enabled
-                if ENABLE_NOTIFICATIONS:
+                if get_enable_notifications():
                     await self.show_notification(
                         title=f"Code Executed Successfully",
                         message=f"Repository: {repository}\nStatus: Success"
@@ -126,7 +126,7 @@ class WorkflowService:
             print(f"Error executing code: {e}")
             
             # Show notification if enabled
-            if ENABLE_NOTIFICATIONS:
+            if get_enable_notifications():
                 await self.show_notification(
                     title=f"Code Execution Failed",
                     message=f"Repository: {repository}\nError: {str(e)}"
@@ -170,7 +170,7 @@ class WorkflowService:
                 await run_action()
                 
                 # Show notification if enabled
-                if ENABLE_NOTIFICATIONS:
+                if get_enable_notifications():
                     await self.show_notification(
                         title=f"GitHub Action Executed: {action_name}",
                         message=f"Repository: {repository}\nStatus: Success"
@@ -184,7 +184,7 @@ class WorkflowService:
             print(f"Error executing GitHub Action: {e}")
             
             # Show notification if enabled
-            if ENABLE_NOTIFICATIONS:
+            if get_enable_notifications():
                 await self.show_notification(
                     title=f"GitHub Action Failed: {action_name}",
                     message=f"Repository: {repository}\nError: {str(e)}"
