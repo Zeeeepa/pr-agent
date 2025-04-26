@@ -801,7 +801,7 @@
                 }
             });
             
-            validateBtn.addEventListener('click', function() {
+            validateBtn.addEventListener('click', async function() {
                 const githubApiKey = document.getElementById('github-api-key').value;
                 const supabaseUrl = document.getElementById('supabase-url').value;
                 const supabaseApiKey = document.getElementById('supabase-api-key').value;
@@ -813,26 +813,81 @@
                     return;
                 }
                 
-                validationMessage.textContent = 'Verified! All credentials are valid';
-                validationMessage.className = 'validation-message validation-success';
+                try {
+                    // Send settings to backend for validation
+                    const response = await fetch('/api/api/v1/settings', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            'GITHUB_TOKEN': githubApiKey,
+                            'SUPABASE_URL': supabaseUrl,
+                            'SUPABASE_ANON_KEY': supabaseApiKey
+                        }),
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        validationMessage.textContent = 'Settings validated and saved on server';
+                        validationMessage.className = 'validation-message validation-success';
+                    } else {
+                        validationMessage.textContent = `Error: ${data.detail || 'Failed to validate settings'}`;
+                        validationMessage.className = 'validation-message validation-error';
+                    }
+                } catch (error) {
+                    validationMessage.textContent = `Error: ${error.message || 'Failed to connect to server'}`;
+                    validationMessage.className = 'validation-message validation-error';
+                }
+                
                 validationMessage.style.display = 'block';
             });
             
-            saveBtn.addEventListener('click', function() {
+            saveBtn.addEventListener('click', async function() {
                 const githubApiKey = document.getElementById('github-api-key').value;
                 const supabaseUrl = document.getElementById('supabase-url').value;
                 const supabaseApiKey = document.getElementById('supabase-api-key').value;
                 
+                // Save to localStorage
                 localStorage.setItem('github-api-key', githubApiKey);
                 localStorage.setItem('supabase-url', supabaseUrl);
                 localStorage.setItem('supabase-api-key', supabaseApiKey);
                 
-                validationMessage.textContent = 'Settings saved successfully';
-                validationMessage.className = 'validation-message validation-success';
+                try {
+                    // Also save to backend
+                    const response = await fetch('/api/api/v1/settings', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            'GITHUB_TOKEN': githubApiKey,
+                            'SUPABASE_URL': supabaseUrl,
+                            'SUPABASE_ANON_KEY': supabaseApiKey
+                        }),
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        validationMessage.textContent = 'Settings saved successfully';
+                        validationMessage.className = 'validation-message validation-success';
+                    } else {
+                        validationMessage.textContent = `Error: ${data.detail || 'Failed to save settings'}`;
+                        validationMessage.className = 'validation-message validation-error';
+                    }
+                } catch (error) {
+                    validationMessage.textContent = `Warning: Saved to browser but failed to save to server: ${error.message}`;
+                    validationMessage.className = 'validation-message validation-error';
+                }
+                
                 validationMessage.style.display = 'block';
                 
                 setTimeout(() => {
-                    validationMessage.style.display = 'none';
+                    if (validationMessage.className.includes('validation-success')) {
+                        validationMessage.style.display = 'none';
+                    }
                 }, 2000);
             });
         });
