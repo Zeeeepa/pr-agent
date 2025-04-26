@@ -61,7 +61,7 @@ async def handle_github_webhooks(background_tasks: BackgroundTasks, request: Req
     return {"status": "processing"}
 
 # Settings endpoints
-@router.post("/api/v1/validate_settings")
+@router.post("/api/v1/settings/validate")
 async def validate_settings(settings: Dict[str, str]):
     """
     Validate settings
@@ -71,12 +71,26 @@ async def validate_settings(settings: Dict[str, str]):
         valid, error_message = await settings_service.validate_settings(settings)
         
         if not valid:
-            return {"valid": False, "message": error_message, "code": "validation_error"}
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "valid": False, 
+                    "message": error_message, 
+                    "code": "validation_error"
+                }
+            )
         
         return {"valid": True, "message": "Settings validated successfully"}
     except Exception as e:
         logger.error(f"Error validating settings: {str(e)}")
-        return {"valid": False, "message": str(e), "code": "validation_error"}
+        return JSONResponse(
+            status_code=500,
+            content={
+                "valid": False, 
+                "message": f"Server error: {str(e)}", 
+                "code": "server_error"
+            }
+        )
 
 @router.post("/api/v1/settings")
 async def save_settings(settings: Dict[str, str]):
@@ -88,7 +102,10 @@ async def save_settings(settings: Dict[str, str]):
         valid, error_message = await settings_service.validate_settings(settings)
         
         if not valid:
-            raise HTTPException(status_code=400, detail={"message": error_message, "code": "validation_error"})
+            raise HTTPException(
+                status_code=400, 
+                detail={"message": error_message, "code": "validation_error"}
+            )
         
         # Save the settings
         await settings_service.save_settings(settings)
@@ -96,15 +113,37 @@ async def save_settings(settings: Dict[str, str]):
         # Initialize database if Supabase settings are provided
         if 'SUPABASE_URL' in settings and 'SUPABASE_ANON_KEY' in settings:
             # Test database connection
-            if not await db_service.test_connection():
-                raise HTTPException(status_code=400, detail={"message": "Failed to connect to Supabase with the provided credentials", "code": "db_connection_error"})
+            success, error = await db_service.test_connection()
+            if not success:
+                raise HTTPException(
+                    status_code=400, 
+                    detail={"message": error, "code": "db_connection_error"}
+                )
+            
+            # Apply migrations if needed
+            if db_service.migration_service:
+                try:
+                    success, error = await db_service.migration_service.apply_migrations()
+                    if not success:
+                        raise HTTPException(
+                            status_code=400, 
+                            detail={"message": error, "code": "migration_error"}
+                        )
+                except Exception as e:
+                    raise HTTPException(
+                        status_code=500, 
+                        detail={"message": f"Failed to apply migrations: {str(e)}", "code": "migration_error"}
+                    )
         
         return {"status": "success", "message": "Settings saved successfully"}
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error saving settings: {str(e)}")
-        raise HTTPException(status_code=500, detail={"message": f"Failed to save settings: {str(e)}", "code": "server_error"})
+        raise HTTPException(
+            status_code=500, 
+            detail={"message": f"Failed to save settings: {str(e)}", "code": "server_error"}
+        )
 
 @router.get("/api/v1/settings")
 async def get_settings():

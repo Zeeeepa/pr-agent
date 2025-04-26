@@ -1,7 +1,7 @@
 import os
 import uuid
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 import json
 
@@ -13,6 +13,7 @@ from ..models.trigger import Trigger
 from ..models.workflow import Workflow, WorkflowRun
 from ..config import get_supabase_url, get_supabase_anon_key
 from .migration_service import MigrationService
+from pr_agent.error_handler import ConfigurationError
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -25,12 +26,12 @@ class DatabaseService:
     def __init__(self, settings_service=None):
         """Initialize the database service"""
         self.settings_service = settings_service
-        self.supabase = None
+        self.supabase: Optional[Client] = None
         self.migration_service = None
         self._initialize_supabase()
         
     def _initialize_supabase(self):
-        """Initialize the Supabase client"""
+        """Initialize the Supabase client with improved error handling"""
         try:
             # Try to get Supabase URL and API key from settings service
             if self.settings_service:
@@ -39,76 +40,105 @@ class DatabaseService:
                 
                 if supabase_url and supabase_anon_key:
                     logger.info("Initializing Supabase from settings service")
+                    try:
+                        self.supabase = create_client(supabase_url, supabase_anon_key)
+                        self.migration_service = MigrationService(self.supabase)
+                        # Test connection with a simple query
+                        self._test_connection_internal()
+                        logger.info("Supabase initialized successfully from settings service")
+                        return
+                    except Exception as e:
+                        logger.error(f"Failed to initialize Supabase from settings service: {str(e)}")
+                        # Don't raise here, try the fallback method
+            
+            # Fall back to config if settings service doesn't have the values
+            try:
+                supabase_url = get_supabase_url()
+                supabase_anon_key = get_supabase_anon_key()
+                
+                if supabase_url and supabase_anon_key:
+                    logger.info("Initializing Supabase from environment/config")
                     self.supabase = create_client(supabase_url, supabase_anon_key)
                     self.migration_service = MigrationService(self.supabase)
                     # Test connection with a simple query
-                    self.supabase.table('events').select('*').limit(1).execute()
-                    logger.info("Supabase initialized successfully from settings service")
-                    return
-            
-            # Fall back to config if settings service doesn't have the values
-            supabase_url = get_supabase_url()
-            supabase_anon_key = get_supabase_anon_key()
-            
-            if supabase_url and supabase_anon_key:
-                logger.info("Initializing Supabase from config")
-                self.supabase = create_client(supabase_url, supabase_anon_key)
-                self.migration_service = MigrationService(self.supabase)
-                
-                # Apply migrations if Supabase is initialized
-                if self.supabase:
-                    self._apply_migrations()
-                
-                # Test connection with a simple query
-                self.supabase.table('events').select('*').limit(1).execute()
-                logger.info("Supabase initialized successfully from config")
-                return
-                
-            logger.warning("Supabase URL and API key not found in settings or config")
+                    self._test_connection_internal()
+                    logger.info("Supabase initialized successfully from environment/config")
+                else:
+                    logger.warning("Supabase URL or API key not found in environment/config")
+            except ConfigurationError:
+                logger.warning("Supabase configuration not found in environment/config")
+            except Exception as e:
+                logger.error(f"Failed to initialize Supabase from environment/config: {str(e)}")
         except Exception as e:
-            # Log the error but don't raise it - we'll handle missing Supabase in each method
-            logger.error(f"Failed to initialize Supabase: {str(e)}")
-            self.supabase = None
+            logger.error(f"Unexpected error initializing Supabase: {str(e)}")
     
-    def _apply_migrations(self):
-        """Apply database migrations"""
-        try:
-            if self.migration_service:
-                import asyncio
-                asyncio.create_task(self.migration_service.apply_migrations())
-        except Exception as e:
-            logger.error(f"Failed to apply migrations: {str(e)}")
-    
-    def _ensure_supabase(self):
-        """
-        Ensure Supabase is initialized
-        
-        Raises:
-            ValueError: If Supabase is not initialized
-        """
+    def _test_connection_internal(self):
+        """Internal method to test Supabase connection"""
         if not self.supabase:
-            # Try to initialize again in case settings were updated
-            self._initialize_supabase()
-            
-        if not self.supabase:
-            raise ValueError("Supabase is not initialized. Please provide Supabase URL and API key in settings.")
-    
-    async def test_connection(self) -> bool:
-        """
-        Test the Supabase connection
+            return False
         
-        Returns:
-            True if connection is successful, False otherwise
-        """
         try:
-            self._ensure_supabase()
-            # Try a simple query to test the connection
-            self.supabase.table("migrations").select("*").limit(1).execute()
+            # Try to query the migrations table
+            self.supabase.table('migrations').select('*').limit(1).execute()
             return True
         except Exception as e:
-            logger.error(f"Supabase connection test failed: {str(e)}")
-            return False
-    
+            # Check if this is a "table doesn't exist" error, which is okay
+            # as migrations will create it
+            error_str = str(e).lower()
+            if "not found" in error_str and "relation" in error_str:
+                # This is expected for a new database
+                logger.info("Migrations table not found, will be created during migration")
+                return True
+            else:
+                logger.error(f"Failed to connect to Supabase: {str(e)}")
+                raise
+
+    async def test_connection(self) -> Tuple[bool, Optional[str]]:
+        """
+        Test connection to Supabase
+        
+        Returns:
+            Tuple of (success, error_message)
+        """
+        if not self.supabase:
+            return False, "Supabase is not initialized. Please provide Supabase URL and API key in settings."
+        
+        try:
+            # Try to query the migrations table
+            self.supabase.table('migrations').select('*').limit(1).execute()
+            
+            # If we get here, connection is successful
+            # Now check if migrations need to be applied
+            if self.migration_service:
+                try:
+                    await self.migration_service.apply_migrations()
+                except Exception as e:
+                    logger.error(f"Failed to apply migrations: {str(e)}")
+                    return False, f"Connected to Supabase, but failed to apply migrations: {str(e)}"
+            
+            return True, None
+        except Exception as e:
+            error_str = str(e).lower()
+            
+            # Provide more specific error messages based on the exception
+            if "not found" in error_str and "relation" in error_str:
+                # This is expected for a new database, try to apply migrations
+                if self.migration_service:
+                    try:
+                        await self.migration_service.apply_migrations()
+                        return True, None
+                    except Exception as migration_error:
+                        logger.error(f"Failed to apply migrations: {str(migration_error)}")
+                        return False, f"Failed to apply database migrations: {str(migration_error)}"
+                else:
+                    return False, "Migration service not initialized"
+            elif "unauthorized" in error_str or "authentication" in error_str:
+                return False, "Invalid Supabase API key or unauthorized access"
+            elif "network" in error_str or "connection" in error_str:
+                return False, "Network or connection error when connecting to Supabase"
+            else:
+                return False, f"Failed to connect to Supabase: {str(e)}"
+
     # Event methods
     async def log_event(self, event_type: str, repository: str, payload: Dict[str, Any]) -> Event:
         """
@@ -547,3 +577,17 @@ class DatabaseService:
         except Exception as e:
             logger.error(f"Failed to update workflow run: {str(e)}")
             return None
+    
+    def _ensure_supabase(self):
+        """
+        Ensure Supabase is initialized
+        
+        Raises:
+            ValueError: If Supabase is not initialized
+        """
+        if not self.supabase:
+            # Try to initialize again in case settings were updated
+            self._initialize_supabase()
+            
+        if not self.supabase:
+            raise ValueError("Supabase is not initialized. Please provide Supabase URL and API key in settings.")

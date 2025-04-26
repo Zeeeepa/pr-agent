@@ -124,31 +124,32 @@ class SettingsService:
             if not supabase_anon_key or len(supabase_anon_key) < 10:
                 return False, "Supabase API key appears to be invalid (too short)"
             
+            # Check if the key follows the expected format (eyJ...)
+            if not supabase_anon_key.startswith('eyJ'):
+                return False, "Supabase API key appears to be invalid (incorrect format)"
+            
             try:
                 # Try to connect to Supabase
                 supabase = create_client(supabase_url, supabase_anon_key)
                 
                 # Test a simple query to verify connection
-                result = supabase.table('migrations').select('*').limit(1).execute()
-                
-                # If we get here, the connection was successful
-                # Now check if the required tables exist
-                required_tables = ['events', 'projects', 'triggers', 'workflows', 'workflow_runs']
-                missing_tables = []
-                
-                for table in required_tables:
-                    try:
-                        supabase.table(table).select('*').limit(1).execute()
-                    except Exception:
-                        missing_tables.append(table)
-                
-                if missing_tables:
-                    # Tables are missing, but connection is valid
-                    # This is okay, as migrations will create them
-                    logger.info(f"Supabase connection valid, but missing tables: {', '.join(missing_tables)}")
+                try:
+                    result = supabase.table('migrations').select('*').limit(1).execute()
+                    # If we get here, the connection was successful
                     return True, None
+                except Exception as query_error:
+                    error_str = str(query_error).lower()
+                    
+                    # Check if this is a "table doesn't exist" error, which is okay
+                    # as migrations will create it
+                    if "not found" in error_str and "relation" in error_str:
+                        # This is expected for a new database
+                        logger.info("Supabase connection valid, but migrations table not found")
+                        return True, None
+                    else:
+                        # This is an unexpected error
+                        return False, f"Failed to query Supabase: {str(query_error)}"
                 
-                return True, None
             except Exception as e:
                 error_message = str(e)
                 # Check for specific error types to provide better feedback
@@ -169,6 +170,10 @@ class SettingsService:
             if not github_token or len(github_token) < 10:
                 return False, "GitHub token appears to be invalid (too short)"
             
+            # Check if the token follows the expected format (ghp_, gho_, ghu_, ghs_, or ghr_)
+            if not re.match(r'^(ghp_|gho_|ghu_|ghs_|ghr_)', github_token):
+                return False, "GitHub token appears to be invalid (incorrect format). Personal access tokens should start with ghp_, gho_, ghu_, ghs_, or ghr_."
+            
             # Validate token with GitHub API
             try:
                 headers = {
@@ -177,9 +182,87 @@ class SettingsService:
                 }
                 response = requests.get('https://api.github.com/user', headers=headers)
                 
-                if response.status_code != 200:
+                if response.status_code == 200:
+                    return True, None
+                elif response.status_code == 401:
+                    return False, "GitHub token validation failed: Unauthorized. The token may be invalid or expired."
+                elif response.status_code == 403:
+                    return False, "GitHub token validation failed: Forbidden. The token may not have the required permissions."
+                else:
                     return False, f"GitHub token validation failed: {response.json().get('message', 'Unknown error')}"
             except Exception as e:
                 return False, f"GitHub token validation failed: {str(e)}"
         
         return True, None
+        
+    async def validate_supabase_credentials(self, url: str, key: str) -> Tuple[bool, Optional[str]]:
+        """
+        Validate Supabase credentials
+        
+        Args:
+            url: Supabase URL
+            key: Supabase API key
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        try:
+            # Validate URL format
+            if not url or not url.startswith(('http://', 'https://')):
+                return False, "Supabase URL must be a valid URL starting with http:// or https://"
+            
+            # Validate API key format
+            if not key or len(key) < 10:
+                return False, "Supabase API key appears to be invalid (too short)"
+            
+            # Try to connect to Supabase
+            supabase = create_client(url, key)
+            
+            # Test a simple query to verify connection
+            try:
+                supabase.table('migrations').select('*').limit(1).execute()
+                return True, None
+            except Exception as query_error:
+                error_str = str(query_error).lower()
+                
+                # Check if this is a "table doesn't exist" error, which is okay
+                if "not found" in error_str and "relation" in error_str:
+                    return True, None
+                else:
+                    return False, f"Failed to query Supabase: {str(query_error)}"
+                
+        except Exception as e:
+            return False, f"Failed to connect to Supabase: {str(e)}"
+            
+    async def validate_github_token(self, token: str) -> Tuple[bool, Optional[str]]:
+        """
+        Validate GitHub token
+        
+        Args:
+            token: GitHub token
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        try:
+            # Validate token format
+            if not token or len(token) < 10:
+                return False, "GitHub token appears to be invalid (too short)"
+            
+            # Validate token with GitHub API
+            headers = {
+                'Authorization': f'token {token}',
+                'Accept': 'application/vnd.github.v3+json'
+            }
+            response = requests.get('https://api.github.com/user', headers=headers)
+            
+            if response.status_code == 200:
+                return True, None
+            elif response.status_code == 401:
+                return False, "GitHub token validation failed: Unauthorized. The token may be invalid or expired."
+            elif response.status_code == 403:
+                return False, "GitHub token validation failed: Forbidden. The token may not have the required permissions."
+            else:
+                return False, f"GitHub token validation failed: {response.json().get('message', 'Unknown error')}"
+        except Exception as e:
+            return False, f"GitHub token validation failed: {str(e)}"
