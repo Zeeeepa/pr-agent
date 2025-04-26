@@ -1,6 +1,14 @@
 -- Initial database schema for PR-Agent ExeServer
 -- This migration creates the basic tables needed for the application
 
+-- Migrations table (if not exists)
+CREATE TABLE IF NOT EXISTS migrations (
+    id TEXT PRIMARY KEY,
+    applied_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    description TEXT,
+    status TEXT NOT NULL DEFAULT 'success'
+);
+
 -- Events table
 CREATE TABLE IF NOT EXISTS events (
     id UUID PRIMARY KEY,
@@ -57,6 +65,14 @@ CREATE TABLE IF NOT EXISTS workflow_runs (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
     html_url TEXT NOT NULL,
     api_url TEXT NOT NULL
+);
+
+-- Settings table for storing application settings
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    description TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- Create indexes for better performance
