@@ -3,7 +3,7 @@ from typing import Dict, Any, List, Optional, Union
 import asyncio
 import json
 
-from github import Github, GithubIntegration, Auth
+from github import Github, GithubIntegration
 from github.Repository import Repository
 from github.Workflow import Workflow as GithubWorkflow
 from github.WorkflowRun import WorkflowRun as GithubWorkflowRun
@@ -14,7 +14,7 @@ from pr_agent.servers.github_action_runner import get_setting_or_env
 
 from ..models.project import Project
 from ..models.workflow import Workflow, WorkflowRun, WorkflowStatus, WorkflowTrigger
-from ..config import GITHUB_TOKEN, GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY, GITHUB_APP_INSTALLATION_ID
+from ..config import get_github_token, get_github_app_id, get_github_app_private_key, get_github_app_installation_id
 
 
 class GitHubService:
@@ -27,18 +27,23 @@ class GitHubService:
         self.pr_agent_github_provider = None
         
         # Initialize PyGithub client
-        if GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY and GITHUB_APP_INSTALLATION_ID:
-            # Use GitHub App authentication
-            auth = Auth.AppAuth(GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY)
-            integration = GithubIntegration(auth=auth)
-            auth = Auth.AppInstallationAuth(
-                GITHUB_APP_INSTALLATION_ID, 
-                integration.get_access_token(GITHUB_APP_INSTALLATION_ID).token
+        github_app_id = get_github_app_id()
+        github_app_private_key = get_github_app_private_key()
+        github_app_installation_id = get_github_app_installation_id()
+        github_token = get_github_token()
+        
+        if github_app_id and github_app_private_key and github_app_installation_id:
+            # Use GitHub App authentication (PyGithub 1.58.1 compatible)
+            integration = GithubIntegration(
+                github_app_id,
+                github_app_private_key
             )
-            self.github = Github(auth=auth)
-        elif GITHUB_TOKEN:
+            # Get an access token for the installation
+            access_token = integration.get_access_token(github_app_installation_id).token
+            self.github = Github(access_token)
+        elif github_token:
             # Use personal access token
-            self.github = Github(GITHUB_TOKEN)
+            self.github = Github(github_token)
         else:
             raise ValueError("GitHub authentication credentials not provided")
     
