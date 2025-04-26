@@ -61,13 +61,33 @@ async def handle_github_webhooks(background_tasks: BackgroundTasks, request: Req
 async def validate_settings(settings: Dict[str, str]):
     """
     Validate settings
+    
+    Returns:
+        Dict with validation results for each service (github, supabase)
     """
     try:
         # Validate the settings
-        valid = await settings_service.validate_settings(settings)
-        return {"valid": valid}
+        validation_results = await settings_service.validate_settings(settings)
+        return {
+            "valid": True,
+            "results": validation_results
+        }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        error_message = str(e)
+        # Determine which service failed validation
+        service = "unknown"
+        if "GitHub" in error_message:
+            service = "github"
+        elif "Supabase" in error_message:
+            service = "supabase"
+            
+        return {
+            "valid": False,
+            "error": {
+                "message": error_message,
+                "service": service
+            }
+        }
 
 @router.post("/api/v1/settings")
 async def save_settings(settings: Dict[str, str]):

@@ -3,7 +3,7 @@ from typing import Dict, Any, List, Optional, Union
 import asyncio
 import json
 
-from github import Github, GithubIntegration
+from github import Github, GithubIntegration, GithubException, BadCredentialsException, RateLimitExceededException
 from github.Repository import Repository
 from github.Workflow import Workflow as GithubWorkflow
 from github.WorkflowRun import WorkflowRun as GithubWorkflowRun
@@ -25,6 +25,7 @@ class GitHubService:
         """Initialize the GitHub service"""
         # Initialize PR-Agent's GitHub provider
         self.pr_agent_github_provider = None
+        self.github = None
         
         # Initialize PyGithub client
         try:
@@ -42,18 +43,50 @@ class GitHubService:
                 # Get an access token for the installation
                 access_token = integration.get_access_token(github_app_installation_id).token
                 self.github = Github(access_token)
+                
+                # Verify the token works by making a simple API call
+                self.github.get_rate_limit()
             elif github_token:
                 # Use personal access token
                 self.github = Github(github_token)
+                
+                # Verify the token works by making a simple API call
+                self.github.get_rate_limit()
             else:
-                raise ValueError("GitHub authentication credentials not provided")
+                # No authentication provided, but don't raise an error yet
+                # We'll check for self.github before making API calls
+                pass
+        except BadCredentialsException:
+            print("GitHub authentication failed: Invalid credentials")
+            self.github = None
+        except RateLimitExceededException:
+            print("GitHub authentication failed: Rate limit exceeded")
+            self.github = None
+        except GithubException as e:
+            print(f"GitHub authentication failed: {e.data.get('message', str(e))}")
+            self.github = None
         except Exception as e:
-            # Fallback to token-based authentication if app authentication fails
+            print(f"GitHub authentication failed: {str(e)}")
+            self.github = None
+    
+    def _ensure_github_client(self):
+        """
+        Ensure GitHub client is initialized
+        
+        Raises:
+            ValueError: If GitHub client is not initialized
+        """
+        if not self.github:
             github_token = get_github_token()
             if github_token:
-                self.github = Github(github_token)
+                try:
+                    self.github = Github(github_token)
+                    # Test the connection
+                    self.github.get_rate_limit()
+                except Exception as e:
+                    raise ValueError(f"Failed to initialize GitHub client: {str(e)}")
             else:
-                raise ValueError("GitHub authentication credentials not provided")
+                raise ValueError("GitHub authentication credentials not provided. Please set a valid GitHub token in settings.")
     
     def get_pr_agent_github_provider(self, pr_url: Optional[str] = None) -> GithubProvider:
         """
@@ -76,18 +109,24 @@ class GitHubService:
         Returns:
             List of Project objects
         """
+        self._ensure_github_client()
+        
         repos = []
-        for repo in self.github.get_user().get_repos():
-            project = Project(
-                id=str(repo.id),
-                name=repo.name,
-                full_name=repo.full_name,
-                description=repo.description,
-                html_url=repo.html_url,
-                api_url=repo.url,
-                default_branch=repo.default_branch
-            )
-            repos.append(project)
+        try:
+            for repo in self.github.get_user().get_repos():
+                project = Project(
+                    id=str(repo.id),
+                    name=repo.name,
+                    full_name=repo.full_name,
+                    description=repo.description,
+                    html_url=repo.html_url,
+                    api_url=repo.url,
+                    default_branch=repo.default_branch
+                )
+                repos.append(project)
+        except Exception as e:
+            print(f"Error getting repositories: {e}")
+        
         return repos
     
     async def get_repository(self, owner: str, name: str) -> Optional[Project]:
@@ -101,6 +140,8 @@ class GitHubService:
         Returns:
             Project object or None if not found
         """
+        self._ensure_github_client()
+        
         try:
             repo = self.github.get_repo(f"{owner}/{name}")
             return Project(
@@ -127,6 +168,8 @@ class GitHubService:
         Returns:
             List of Workflow objects
         """
+        self._ensure_github_client()
+        
         try:
             repo = self.github.get_repo(f"{owner}/{name}")
             workflows = []
@@ -180,6 +223,8 @@ class GitHubService:
         Returns:
             List of WorkflowRun objects
         """
+        self._ensure_github_client()
+        
         try:
             repo = self.github.get_repo(f"{owner}/{name}")
             runs = []
@@ -239,6 +284,8 @@ class GitHubService:
         Returns:
             True if successful, False otherwise
         """
+        self._ensure_github_client()
+        
         try:
             # Use PR-Agent's github_action_runner functionality
             repo = self.github.get_repo(f"{owner}/{name}")

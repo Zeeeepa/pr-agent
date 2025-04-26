@@ -8,6 +8,8 @@ import os
 import json
 from typing import Dict, Any, Optional
 from supabase import create_client, Client
+import requests
+from github import Github, GithubException, BadCredentialsException, RateLimitExceededException
 
 class SettingsService:
     """
@@ -76,6 +78,8 @@ class SettingsService:
         Raises:
             Exception: If validation fails
         """
+        validation_results = {}
+        
         # Validate Supabase settings if provided
         if 'SUPABASE_URL' in settings and 'SUPABASE_ANON_KEY' in settings:
             supabase_url = settings['SUPABASE_URL']
@@ -89,8 +93,16 @@ class SettingsService:
                 supabase = create_client(supabase_url, supabase_anon_key)
                 # Test a simple query
                 supabase.table('events').select('*').limit(1).execute()
+                validation_results['supabase'] = "valid"
             except Exception as e:
-                raise Exception(f"Failed to connect to Supabase: {str(e)}")
+                error_message = str(e)
+                # Check for specific Supabase error types
+                if "404" in error_message:
+                    raise Exception("Supabase URL is invalid or the table 'events' does not exist")
+                elif "401" in error_message or "403" in error_message:
+                    raise Exception("Supabase API key is invalid or lacks necessary permissions")
+                else:
+                    raise Exception(f"Failed to connect to Supabase: {error_message}")
         
         # Validate GitHub token if provided
         if 'GITHUB_TOKEN' in settings:
@@ -99,9 +111,45 @@ class SettingsService:
             if not github_token:
                 raise Exception("GitHub token is required")
             
-            # Additional GitHub token validation could be added here
+            try:
+                # Create a GitHub client with the token
+                github = Github(github_token)
+                
+                # Test the token by getting the authenticated user
+                user = github.get_user()
+                user_data = {
+                    "login": user.login,
+                    "name": user.name,
+                    "email": user.email
+                }
+                
+                # Test rate limit to ensure token is valid
+                rate_limit = github.get_rate_limit()
+                
+                validation_results['github'] = {
+                    "status": "valid",
+                    "user": user_data,
+                    "rate_limit": {
+                        "remaining": rate_limit.core.remaining,
+                        "limit": rate_limit.core.limit,
+                        "reset": str(rate_limit.core.reset)
+                    }
+                }
+            except BadCredentialsException:
+                raise Exception("GitHub token is invalid. Please check your token and try again.")
+            except RateLimitExceededException:
+                raise Exception("GitHub API rate limit exceeded. Please try again later.")
+            except GithubException as e:
+                if e.status == 401:
+                    raise Exception("GitHub token is invalid or expired. Please generate a new token.")
+                elif e.status == 403:
+                    raise Exception("GitHub token lacks necessary permissions. Ensure it has the required scopes.")
+                else:
+                    raise Exception(f"GitHub API error: {e.data.get('message', str(e))}")
+            except Exception as e:
+                raise Exception(f"Failed to validate GitHub token: {str(e)}")
         
-        return True
+        return validation_results
     
     def get_setting(self, key: str, default: Any = None) -> Any:
         """
