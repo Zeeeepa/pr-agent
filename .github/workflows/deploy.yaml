@@ -104,6 +104,19 @@ jobs:
           cache-to: type=gha,mode=max,scope=prod
           target: gitlab_webhook
 
+      - name: Build and push UI image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: true
+          tags: |
+            codiumai/pr-agent:ui-${{ needs.set-version.outputs.version }}
+            codiumai/pr-agent:ui-latest
+          cache-from: type=gha,scope=prod
+          cache-to: type=gha,mode=max,scope=prod
+          target: ui
+
   publish-pypi:
     name: Publish to PyPI
     runs-on: ubuntu-latest

@@ -40,3 +40,14 @@ ADD tests tests
 FROM base AS cli
 ADD pr_agent pr_agent
 ENTRYPOINT ["python", "pr_agent/cli.py"]
+
+FROM node:18 AS ui-builder
+WORKDIR /app
+COPY pr_agent/execserver/ui /app
+RUN npm ci && npm run build
+
+FROM base AS ui
+COPY --from=ui-builder /app/dist /app/pr_agent/execserver/ui/static
+ADD pr_agent pr_agent
+EXPOSE 8000
+CMD ["python", "-m", "pr_agent.execserver.app"]
