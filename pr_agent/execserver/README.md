@@ -191,3 +191,13 @@ pytest tests/execserver/test_execserver.py
 ## License
 
 This project is licensed under the same license as PR-Agent.
+
+## Database Integration
+
+ExecServer uses Supabase as its database backend. The integration includes:
+
+1. **Automatic Migrations**: Database schema is automatically created and updated
+2. **Validation**: Supabase credentials are validated before use
+3. **Error Handling**: Comprehensive error handling for database operations
+
+For detailed information about the Supabase integration, see [SUPABASE.md](SUPABASE.md).
