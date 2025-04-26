@@ -7,6 +7,7 @@
  * - Managing event triggers
  * - Visualizing event flow
  * - Connecting triggers to actions
+ * - Managing settings
  */
 
 // Event System Configuration
@@ -51,6 +52,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (EVENT_SYSTEM.autoRefresh) {
         startAutoRefresh();
     }
+    
+    // Initialize settings
+    initializeSettings();
 });
 
 /**
@@ -103,6 +107,40 @@ function setupEventHandlers() {
     const resetFiltersButton = document.getElementById('reset-filters');
     if (resetFiltersButton) {
         resetFiltersButton.addEventListener('click', resetTriggerFilters);
+    }
+    
+    // Settings button
+    const settingsBtn = document.getElementById('settings-btn');
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', showSettingsDialog);
+    }
+    
+    // Settings dialog close button
+    const settingsCloseBtn = document.querySelector('.settings-dialog-close');
+    if (settingsCloseBtn) {
+        settingsCloseBtn.addEventListener('click', hideSettingsDialog);
+    }
+    
+    // Settings dialog background click
+    const settingsDialog = document.getElementById('settings-dialog');
+    if (settingsDialog) {
+        settingsDialog.addEventListener('click', function(e) {
+            if (e.target === settingsDialog) {
+                hideSettingsDialog();
+            }
+        });
+    }
+    
+    // Validate settings button
+    const validateBtn = document.getElementById('validate-settings');
+    if (validateBtn) {
+        validateBtn.addEventListener('click', validateSettings);
+    }
+    
+    // Save settings button
+    const saveBtn = document.getElementById('save-settings');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', saveSettings);
     }
 }
 
@@ -420,9 +458,161 @@ function resetTriggerFilters() {
     fetchTriggers();
 }
 
+/**
+ * Initialize settings
+ */
+function initializeSettings() {
+    // Load settings from localStorage
+    const githubApiKey = localStorage.getItem('github-api-key') || '';
+    const supabaseUrl = localStorage.getItem('supabase-url') || '';
+    const supabaseApiKey = localStorage.getItem('supabase-api-key') || '';
+    
+    // Set input values
+    document.getElementById('github-api-key').value = githubApiKey;
+    document.getElementById('supabase-url').value = supabaseUrl;
+    document.getElementById('supabase-api-key').value = supabaseApiKey;
+    
+    // If we have settings, send them to the server
+    if (supabaseUrl && supabaseApiKey) {
+        saveSettingsToServer({
+            GITHUB_TOKEN: githubApiKey,
+            SUPABASE_URL: supabaseUrl,
+            SUPABASE_ANON_KEY: supabaseApiKey
+        });
+    }
+}
+
+/**
+ * Show the settings dialog
+ */
+function showSettingsDialog() {
+    const settingsDialog = document.getElementById('settings-dialog');
+    if (settingsDialog) {
+        settingsDialog.style.display = 'flex';
+    }
+}
+
+/**
+ * Hide the settings dialog
+ */
+function hideSettingsDialog() {
+    const settingsDialog = document.getElementById('settings-dialog');
+    if (settingsDialog) {
+        settingsDialog.style.display = 'none';
+    }
+}
+
+/**
+ * Validate settings
+ */
+function validateSettings() {
+    const githubApiKey = document.getElementById('github-api-key').value;
+    const supabaseUrl = document.getElementById('supabase-url').value;
+    const supabaseApiKey = document.getElementById('supabase-api-key').value;
+    const validationMessage = document.getElementById('validation-message');
+    
+    // Check if required fields are filled
+    if (!supabaseUrl || !supabaseApiKey) {
+        validationMessage.textContent = 'Error: Supabase URL and API key are required';
+        validationMessage.className = 'validation-message validation-error';
+        validationMessage.style.display = 'block';
+        return;
+    }
+    
+    // Validate settings with the server
+    fetch(`${EVENT_SYSTEM.apiBaseUrl}/settings/validate`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            GITHUB_TOKEN: githubApiKey,
+            SUPABASE_URL: supabaseUrl,
+            SUPABASE_ANON_KEY: supabaseApiKey
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.valid) {
+            validationMessage.textContent = 'Verified! All credentials are valid';
+            validationMessage.className = 'validation-message validation-success';
+        } else {
+            validationMessage.textContent = data.error || 'Error: Invalid credentials';
+            validationMessage.className = 'validation-message validation-error';
+        }
+        validationMessage.style.display = 'block';
+    })
+    .catch(error => {
+        console.error('Error validating settings:', error);
+        validationMessage.textContent = 'Error: Failed to validate settings';
+        validationMessage.className = 'validation-message validation-error';
+        validationMessage.style.display = 'block';
+    });
+}
+
+/**
+ * Save settings
+ */
+function saveSettings() {
+    const githubApiKey = document.getElementById('github-api-key').value;
+    const supabaseUrl = document.getElementById('supabase-url').value;
+    const supabaseApiKey = document.getElementById('supabase-api-key').value;
+    const validationMessage = document.getElementById('validation-message');
+    
+    // Check if required fields are filled
+    if (!supabaseUrl || !supabaseApiKey) {
+        validationMessage.textContent = 'Error: Supabase URL and API key are required';
+        validationMessage.className = 'validation-message validation-error';
+        validationMessage.style.display = 'block';
+        return;
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('github-api-key', githubApiKey);
+    localStorage.setItem('supabase-url', supabaseUrl);
+    localStorage.setItem('supabase-api-key', supabaseApiKey);
+    
+    // Save to server
+    saveSettingsToServer({
+        GITHUB_TOKEN: githubApiKey,
+        SUPABASE_URL: supabaseUrl,
+        SUPABASE_ANON_KEY: supabaseApiKey
+    });
+    
+    validationMessage.textContent = 'Settings saved successfully';
+    validationMessage.className = 'validation-message validation-success';
+    validationMessage.style.display = 'block';
+    
+    setTimeout(() => {
+        validationMessage.style.display = 'none';
+    }, 2000);
+}
+
+/**
+ * Save settings to server
+ * @param {Object} settings - Settings object
+ */
+function saveSettingsToServer(settings) {
+    fetch(`${EVENT_SYSTEM.apiBaseUrl}/settings`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(settings)
+    })
+    .then(response => response.json())
+    .catch(error => {
+        console.error('Error saving settings to server:', error);
+    });
+}
+
 // Export functions for use in other scripts
 window.viewEventDetails = viewEventDetails;
 window.editTrigger = editTrigger;
 window.toggleTrigger = toggleTrigger;
 window.showCreateTriggerModal = showCreateTriggerModal;
 window.showConnectionsDiagram = showConnectionsDiagram;
+window.showSettingsDialog = showSettingsDialog;
+window.hideSettingsDialog = hideSettingsDialog;
+window.validateSettings = validateSettings;
+window.saveSettings = saveSettings;

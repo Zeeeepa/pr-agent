@@ -17,9 +17,37 @@ class DatabaseService:
     """
     Service for interacting with the database
     """
-    def __init__(self):
+    def __init__(self, settings_service=None):
         """Initialize the database service"""
-        self.supabase: Client = create_client(get_supabase_url(), get_supabase_anon_key())
+        self.settings_service = settings_service
+        self.supabase = None
+        self._initialize_supabase()
+        
+    def _initialize_supabase(self):
+        """Initialize the Supabase client"""
+        try:
+            # Try to get settings from settings service first
+            if self.settings_service:
+                supabase_url = self.settings_service.get_setting('SUPABASE_URL')
+                supabase_anon_key = self.settings_service.get_setting('SUPABASE_ANON_KEY')
+                
+                if supabase_url and supabase_anon_key:
+                    self.supabase = create_client(supabase_url, supabase_anon_key)
+                    return
+            
+            # Fall back to config if settings service doesn't have the values
+            self.supabase = create_client(get_supabase_url(), get_supabase_anon_key())
+        except Exception as e:
+            # Log the error but don't raise it - we'll handle missing Supabase in each method
+            print(f"Failed to initialize Supabase: {str(e)}")
+    
+    def _ensure_supabase(self):
+        """Ensure Supabase is initialized"""
+        if not self.supabase:
+            self._initialize_supabase()
+            
+        if not self.supabase:
+            raise ValueError("Supabase is not initialized. Please provide Supabase URL and API key in settings.")
         
     # Event methods
     async def log_event(self, event_type: str, repository: str, payload: Dict[str, Any]) -> Event:
@@ -34,6 +62,8 @@ class DatabaseService:
         Returns:
             The created Event object
         """
+        self._ensure_supabase()
+        
         event_id = str(uuid.uuid4())
         event = Event(
             id=event_id,
@@ -60,6 +90,8 @@ class DatabaseService:
         Returns:
             The updated Event object
         """
+        self._ensure_supabase()
+        
         now = datetime.utcnow()
         
         # Update in Supabase
@@ -85,6 +117,8 @@ class DatabaseService:
         Returns:
             The Event object or None if not found
         """
+        self._ensure_supabase()
+        
         result = self.supabase.table("events").select("*").eq("id", event_id).execute()
         event_data = result.data[0] if result.data else None
         
@@ -107,6 +141,8 @@ class DatabaseService:
         Returns:
             List of Event objects
         """
+        self._ensure_supabase()
+        
         query = self.supabase.table("events").select("*")
         
         if repository:
@@ -130,6 +166,8 @@ class DatabaseService:
         Returns:
             The created Project object
         """
+        self._ensure_supabase()
+        
         self.supabase.table("projects").insert(project.dict()).execute()
         return project
     
@@ -143,6 +181,8 @@ class DatabaseService:
         Returns:
             The Project object or None if not found
         """
+        self._ensure_supabase()
+        
         result = self.supabase.table("projects").select("*").eq("id", project_id).execute()
         project_data = result.data[0] if result.data else None
         
@@ -158,6 +198,8 @@ class DatabaseService:
         Returns:
             List of Project objects
         """
+        self._ensure_supabase()
+        
         result = self.supabase.table("projects").select("*").execute()
         return [Project(**project_data) for project_data in result.data]
     
@@ -172,6 +214,8 @@ class DatabaseService:
         Returns:
             The created Trigger object
         """
+        self._ensure_supabase()
+        
         self.supabase.table("triggers").insert(trigger.dict()).execute()
         return trigger
     
@@ -185,6 +229,8 @@ class DatabaseService:
         Returns:
             The Trigger object or None if not found
         """
+        self._ensure_supabase()
+        
         result = self.supabase.table("triggers").select("*").eq("id", trigger_id).execute()
         trigger_data = result.data[0] if result.data else None
         
@@ -203,6 +249,8 @@ class DatabaseService:
         Returns:
             List of Trigger objects
         """
+        self._ensure_supabase()
+        
         result = self.supabase.table("triggers").select("*").eq("project_id", project_id).execute()
         return [Trigger(**trigger_data) for trigger_data in result.data]
     
@@ -217,6 +265,8 @@ class DatabaseService:
         Returns:
             The updated Trigger object or None if not found
         """
+        self._ensure_supabase()
+        
         result = self.supabase.table("triggers").update(data).eq("id", trigger_id).execute()
         trigger_data = result.data[0] if result.data else None
         
@@ -236,6 +286,8 @@ class DatabaseService:
         Returns:
             The created Workflow object
         """
+        self._ensure_supabase()
+        
         self.supabase.table("workflows").insert(workflow.dict()).execute()
         return workflow
     
@@ -249,6 +301,8 @@ class DatabaseService:
         Returns:
             The Workflow object or None if not found
         """
+        self._ensure_supabase()
+        
         result = self.supabase.table("workflows").select("*").eq("id", workflow_id).execute()
         workflow_data = result.data[0] if result.data else None
         
@@ -267,6 +321,8 @@ class DatabaseService:
         Returns:
             List of Workflow objects
         """
+        self._ensure_supabase()
+        
         result = self.supabase.table("workflows").select("*").eq("repository", repository).execute()
         return [Workflow(**workflow_data) for workflow_data in result.data]
     
@@ -280,6 +336,8 @@ class DatabaseService:
         Returns:
             The created WorkflowRun object
         """
+        self._ensure_supabase()
+        
         self.supabase.table("workflow_runs").insert(workflow_run.dict()).execute()
         return workflow_run
     
@@ -297,6 +355,8 @@ class DatabaseService:
         Returns:
             List of WorkflowRun objects
         """
+        self._ensure_supabase()
+        
         query = self.supabase.table("workflow_runs").select("*")
         
         if workflow_id:

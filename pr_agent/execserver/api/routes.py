@@ -11,6 +11,7 @@ from ..services.db_service import DatabaseService
 from ..services.github_service import GitHubService
 from ..services.event_service import EventService
 from ..services.workflow_service import WorkflowService
+from ..services.settings_service import SettingsService
 from pr_agent.servers.utils import verify_signature
 from pr_agent.servers.github_app import handle_github_webhooks as pr_agent_handle_github_webhooks
 from ..config import get_setting_or_env
@@ -19,7 +20,8 @@ from ..config import get_setting_or_env
 router = APIRouter()
 
 # Service instances
-db_service = DatabaseService()
+settings_service = SettingsService()
+db_service = DatabaseService(settings_service)
 github_service = GitHubService()
 workflow_service = WorkflowService()
 event_service = EventService(db_service, github_service, workflow_service)
@@ -53,6 +55,43 @@ async def handle_github_webhooks(background_tasks: BackgroundTasks, request: Req
     background_tasks.add_task(event_service.process_webhook, event_type, body)
     
     return {"status": "processing"}
+
+# Settings endpoints
+@router.post("/api/v1/settings/validate")
+async def validate_settings(settings: Dict[str, str]):
+    """
+    Validate settings
+    """
+    try:
+        # Validate the settings
+        valid = await settings_service.validate_settings(settings)
+        return {"valid": valid}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/api/v1/settings")
+async def save_settings(settings: Dict[str, str]):
+    """
+    Save settings
+    """
+    try:
+        # Save the settings
+        await settings_service.save_settings(settings)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/api/v1/settings")
+async def get_settings():
+    """
+    Get settings
+    """
+    try:
+        # Get the settings
+        settings = await settings_service.get_settings()
+        return settings
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 # Projects endpoints
 @router.get("/api/v1/projects")
