@@ -14,12 +14,14 @@ from ..models.workflow import Workflow, WorkflowRun
 from ..config import get_supabase_url, get_supabase_anon_key
 from .migration_service import MigrationService
 
+# Set up logging
 logger = logging.getLogger(__name__)
 
 class DatabaseService:
     """
-    Service for interacting with the database
+    Service for managing database operations
     """
+    
     def __init__(self, settings_service=None):
         """Initialize the database service"""
         self.settings_service = settings_service
@@ -30,14 +32,18 @@ class DatabaseService:
     def _initialize_supabase(self):
         """Initialize the Supabase client"""
         try:
-            # Try to get settings from settings service first
+            # Try to get Supabase URL and API key from settings service
             if self.settings_service:
                 supabase_url = self.settings_service.get_setting('SUPABASE_URL')
                 supabase_anon_key = self.settings_service.get_setting('SUPABASE_ANON_KEY')
                 
                 if supabase_url and supabase_anon_key:
+                    logger.info("Initializing Supabase from settings service")
                     self.supabase = create_client(supabase_url, supabase_anon_key)
                     self.migration_service = MigrationService(self.supabase)
+                    # Test connection with a simple query
+                    self.supabase.table('events').select('*').limit(1).execute()
+                    logger.info("Supabase initialized successfully from settings service")
                     return
             
             # Fall back to config if settings service doesn't have the values
@@ -45,15 +51,24 @@ class DatabaseService:
             supabase_anon_key = get_supabase_anon_key()
             
             if supabase_url and supabase_anon_key:
+                logger.info("Initializing Supabase from config")
                 self.supabase = create_client(supabase_url, supabase_anon_key)
                 self.migration_service = MigrationService(self.supabase)
                 
                 # Apply migrations if Supabase is initialized
                 if self.supabase:
                     self._apply_migrations()
+                
+                # Test connection with a simple query
+                self.supabase.table('events').select('*').limit(1).execute()
+                logger.info("Supabase initialized successfully from config")
+                return
+                
+            logger.warning("Supabase URL and API key not found in settings or config")
         except Exception as e:
             # Log the error but don't raise it - we'll handle missing Supabase in each method
             logger.error(f"Failed to initialize Supabase: {str(e)}")
+            self.supabase = None
     
     def _apply_migrations(self):
         """Apply database migrations"""
@@ -65,8 +80,14 @@ class DatabaseService:
             logger.error(f"Failed to apply migrations: {str(e)}")
     
     def _ensure_supabase(self):
-        """Ensure Supabase is initialized"""
+        """
+        Ensure Supabase is initialized
+        
+        Raises:
+            ValueError: If Supabase is not initialized
+        """
         if not self.supabase:
+            # Try to initialize again in case settings were updated
             self._initialize_supabase()
             
         if not self.supabase:
@@ -87,25 +108,25 @@ class DatabaseService:
         except Exception as e:
             logger.error(f"Supabase connection test failed: {str(e)}")
             return False
-        
+    
     # Event methods
     async def log_event(self, event_type: str, repository: str, payload: Dict[str, Any]) -> Event:
         """
-        Log a GitHub event to the database
+        Log an event
         
         Args:
-            event_type: Type of GitHub event
-            repository: Repository full name (owner/repo)
-            payload: Event payload data
+            event_type: Type of event
+            repository: Repository name
+            payload: Event payload
             
         Returns:
-            The created Event object
+            Event object
         """
         self._ensure_supabase()
         
-        event_id = str(uuid.uuid4())
+        # Create event
         event = Event(
-            id=event_id,
+            id=str(uuid.uuid4()),
             event_type=event_type,
             repository=repository,
             payload=payload,
@@ -130,7 +151,7 @@ class DatabaseService:
             event_id: ID of the event to mark as processed
             
         Returns:
-            The updated Event object
+            Updated event
         """
         self._ensure_supabase()
         
@@ -161,7 +182,7 @@ class DatabaseService:
             event_id: ID of the event to get
             
         Returns:
-            The Event object or None if not found
+            Event object or None if not found
         """
         self._ensure_supabase()
         
@@ -180,16 +201,16 @@ class DatabaseService:
     async def get_events(self, repository: Optional[str] = None, processed: Optional[bool] = None, 
                         limit: int = 100, offset: int = 0) -> List[Event]:
         """
-        Get events with optional filtering
+        Get events
         
         Args:
-            repository: Filter by repository
-            processed: Filter by processed status
+            repository: Repository to filter by
+            processed: Whether to filter by processed status
             limit: Maximum number of events to return
             offset: Offset for pagination
             
         Returns:
-            List of Event objects
+            List of events
         """
         self._ensure_supabase()
         
@@ -212,13 +233,13 @@ class DatabaseService:
     # Project methods
     async def create_project(self, project: Project) -> Project:
         """
-        Create a new project
+        Create a project
         
         Args:
             project: Project to create
             
         Returns:
-            The created Project object
+            Created project
         """
         self._ensure_supabase()
         
@@ -237,7 +258,7 @@ class DatabaseService:
             project_id: ID of the project to get
             
         Returns:
-            The Project object or None if not found
+            Project object or None if not found
         """
         self._ensure_supabase()
         
@@ -258,7 +279,7 @@ class DatabaseService:
         Get all projects
         
         Returns:
-            List of Project objects
+            List of projects
         """
         self._ensure_supabase()
         
@@ -272,13 +293,13 @@ class DatabaseService:
     # Trigger methods
     async def create_trigger(self, trigger: Trigger) -> Trigger:
         """
-        Create a new trigger
+        Create a trigger
         
         Args:
             trigger: Trigger to create
             
         Returns:
-            The created Trigger object
+            Created trigger
         """
         self._ensure_supabase()
         
@@ -297,7 +318,7 @@ class DatabaseService:
             trigger_id: ID of the trigger to get
             
         Returns:
-            The Trigger object or None if not found
+            Trigger object or None if not found
         """
         self._ensure_supabase()
         
@@ -318,10 +339,10 @@ class DatabaseService:
         Get all triggers for a project
         
         Args:
-            project_id: ID of the project
+            project_id: ID of the project to get triggers for
             
         Returns:
-            List of Trigger objects
+            List of triggers
         """
         self._ensure_supabase()
         
@@ -341,7 +362,7 @@ class DatabaseService:
             data: Data to update
             
         Returns:
-            The updated Trigger object or None if not found
+            Updated trigger or None if not found
         """
         self._ensure_supabase()
         
@@ -360,13 +381,13 @@ class DatabaseService:
     # Workflow methods
     async def create_workflow(self, workflow: Workflow) -> Workflow:
         """
-        Create a new workflow
+        Create a workflow
         
         Args:
             workflow: Workflow to create
             
         Returns:
-            The created Workflow object
+            Created workflow
         """
         self._ensure_supabase()
         
@@ -385,7 +406,7 @@ class DatabaseService:
             workflow_id: ID of the workflow to get
             
         Returns:
-            The Workflow object or None if not found
+            Workflow object or None if not found
         """
         self._ensure_supabase()
         
@@ -401,34 +422,41 @@ class DatabaseService:
             logger.error(f"Failed to get workflow: {str(e)}")
             return None
     
-    async def get_workflows_for_repository(self, repository: str) -> List[Workflow]:
+    async def get_workflows(self, repository: Optional[str] = None) -> List[Workflow]:
         """
-        Get all workflows for a repository
+        Get workflows
         
         Args:
-            repository: Repository full name (owner/repo)
+            repository: Repository to filter by
             
         Returns:
-            List of Workflow objects
+            List of workflows
         """
         self._ensure_supabase()
         
         try:
-            result = self.supabase.table("workflows").select("*").eq("repository", repository).execute()
+            query = self.supabase.table("workflows").select("*")
+            
+            if repository:
+                query = query.eq("repository", repository)
+            
+            result = query.execute()
+            
             return [Workflow(**workflow_data) for workflow_data in result.data]
         except Exception as e:
-            logger.error(f"Failed to get workflows for repository: {str(e)}")
+            logger.error(f"Failed to get workflows: {str(e)}")
             return []
     
+    # Workflow run methods
     async def create_workflow_run(self, workflow_run: WorkflowRun) -> WorkflowRun:
         """
-        Create a new workflow run
+        Create a workflow run
         
         Args:
-            workflow_run: WorkflowRun to create
+            workflow_run: Workflow run to create
             
         Returns:
-            The created WorkflowRun object
+            Created workflow run
         """
         self._ensure_supabase()
         
@@ -439,19 +467,43 @@ class DatabaseService:
             logger.error(f"Failed to create workflow run: {str(e)}")
             raise
     
-    async def get_workflow_runs(self, workflow_id: Optional[str] = None, repository: Optional[str] = None,
-                              limit: int = 10, offset: int = 0) -> List[WorkflowRun]:
+    async def get_workflow_run(self, run_id: str) -> Optional[WorkflowRun]:
         """
-        Get workflow runs with optional filtering
+        Get a workflow run by ID
         
         Args:
-            workflow_id: Filter by workflow ID
-            repository: Filter by repository
-            limit: Maximum number of workflow runs to return
+            run_id: ID of the workflow run to get
+            
+        Returns:
+            Workflow run object or None if not found
+        """
+        self._ensure_supabase()
+        
+        try:
+            result = self.supabase.table("workflow_runs").select("*").eq("id", run_id).execute()
+            run_data = result.data[0] if result.data else None
+            
+            if not run_data:
+                return None
+            
+            return WorkflowRun(**run_data)
+        except Exception as e:
+            logger.error(f"Failed to get workflow run: {str(e)}")
+            return None
+    
+    async def get_workflow_runs(self, workflow_id: Optional[str] = None, repository: Optional[str] = None, 
+                               limit: int = 10, offset: int = 0) -> List[WorkflowRun]:
+        """
+        Get workflow runs
+        
+        Args:
+            workflow_id: Workflow ID to filter by
+            repository: Repository to filter by
+            limit: Maximum number of runs to return
             offset: Offset for pagination
             
         Returns:
-            List of WorkflowRun objects
+            List of workflow runs
         """
         self._ensure_supabase()
         
@@ -470,3 +522,28 @@ class DatabaseService:
         except Exception as e:
             logger.error(f"Failed to get workflow runs: {str(e)}")
             return []
+    
+    async def update_workflow_run(self, run_id: str, data: Dict[str, Any]) -> Optional[WorkflowRun]:
+        """
+        Update a workflow run
+        
+        Args:
+            run_id: ID of the workflow run to update
+            data: Data to update
+            
+        Returns:
+            Updated workflow run or None if not found
+        """
+        self._ensure_supabase()
+        
+        try:
+            result = self.supabase.table("workflow_runs").update(data).eq("id", run_id).execute()
+            run_data = result.data[0] if result.data else None
+            
+            if not run_data:
+                return None
+            
+            return WorkflowRun(**run_data)
+        except Exception as e:
+            logger.error(f"Failed to update workflow run: {str(e)}")
+            return None

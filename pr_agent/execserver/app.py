@@ -6,6 +6,7 @@ routes, and error handling.
 """
 
 import os
+import asyncio
 from pathlib import Path
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,8 +14,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 
 from pr_agent.execserver.api.routes import router as api_router
-from pr_agent.execserver.config import get_cors_origins, get_log_level, get_log_format, set_settings_service
+from pr_agent.execserver.config import (
+    get_cors_origins, get_log_level, get_log_format, 
+    set_settings_service, get_supabase_url, get_supabase_anon_key
+)
 from pr_agent.execserver.services.settings_service import SettingsService
+from pr_agent.execserver.db import initialize_database
 from pr_agent.log import setup_logger, LoggingFormat
 from pr_agent.error_handler import PRAgentError, handle_exceptions
 from pr_agent.log.enhanced_logging import RequestContext, structured_log
@@ -115,6 +120,7 @@ async def general_exception_handler(request: Request, exc: Exception):
         content={
             "error": "InternalServerError",
             "message": "An unexpected error occurred",
+            "code": "server_error"
         },
     )
 
@@ -131,6 +137,33 @@ app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
 async def health_check():
     """Health check endpoint for monitoring."""
     return {"status": "ok", "version": "0.1.0"}
+
+# Database initialization
+@app.on_event("startup")
+async def startup_db_client():
+    """Initialize database on startup."""
+    try:
+        # Try to get Supabase credentials from settings service first
+        supabase_url = settings_service.get_setting('SUPABASE_URL')
+        supabase_anon_key = settings_service.get_setting('SUPABASE_ANON_KEY')
+        
+        # If not found in settings service, try config
+        if not supabase_url or not supabase_anon_key:
+            supabase_url = get_supabase_url()
+            supabase_anon_key = get_supabase_anon_key()
+        
+        # Initialize database if credentials are available
+        if supabase_url and supabase_anon_key:
+            logger.info("Initializing database...")
+            success = await initialize_database(supabase_url, supabase_anon_key)
+            if success:
+                logger.info("Database initialized successfully")
+            else:
+                logger.warning("Database initialization failed")
+        else:
+            logger.warning("Supabase credentials not found, skipping database initialization")
+    except Exception as e:
+        logger.error(f"Error initializing database: {str(e)}")
 
 # Main entry point
 if __name__ == "__main__":

@@ -1,14 +1,16 @@
 """
-Settings service for ExeServer.
+Settings Service
 
-This module provides a service for managing application settings.
+This module provides a service for managing application settings
 """
 
 import os
 import json
 import logging
+import re
 from typing import Dict, Any, Optional, Tuple
 from supabase import create_client, Client
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -16,56 +18,84 @@ class SettingsService:
     """
     Service for managing application settings
     """
-    def __init__(self):
-        """Initialize the settings service"""
-        self.settings = {}
-        self.settings_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'settings.json')
+    
+    def __init__(self, settings_file: str = None):
+        """
+        Initialize the settings service
+        
+        Args:
+            settings_file: Path to the settings file
+        """
+        self.settings_file = settings_file or os.path.join(os.path.dirname(os.path.dirname(__file__)), 'settings.json')
+        self._settings = {}
         self._load_settings()
     
     def _load_settings(self):
-        """Load settings from file if it exists"""
-        if os.path.exists(self.settings_file):
-            try:
-                with open(self.settings_file, 'r') as f:
-                    self.settings = json.load(f)
-            except Exception as e:
-                logger.error(f"Failed to load settings: {str(e)}")
-                self.settings = {}
-    
-    def _save_settings_to_file(self):
-        """Save settings to file"""
+        """Load settings from the settings file"""
         try:
-            with open(self.settings_file, 'w') as f:
-                json.dump(self.settings, f)
+            if os.path.exists(self.settings_file):
+                with open(self.settings_file, 'r') as f:
+                    self._settings = json.load(f)
+            else:
+                self._settings = {}
         except Exception as e:
-            logger.error(f"Failed to save settings to file: {str(e)}")
+            logger.error(f"Failed to load settings: {str(e)}")
+            self._settings = {}
     
-    async def get_settings(self) -> Dict[str, str]:
+    def _save_settings(self):
+        """Save settings to the settings file"""
+        try:
+            # Create directory if it doesn't exist
+            os.makedirs(os.path.dirname(self.settings_file), exist_ok=True)
+            
+            with open(self.settings_file, 'w') as f:
+                json.dump(self._settings, f, indent=2)
+        except Exception as e:
+            logger.error(f"Failed to save settings: {str(e)}")
+            raise
+    
+    def get_setting(self, key: str, default: Any = None) -> Any:
+        """
+        Get a setting value
+        
+        Args:
+            key: Setting key
+            default: Default value if setting is not found
+            
+        Returns:
+            Setting value or default
+        """
+        return self._settings.get(key, default)
+    
+    def set_setting(self, key: str, value: Any):
+        """
+        Set a setting value
+        
+        Args:
+            key: Setting key
+            value: Setting value
+        """
+        self._settings[key] = value
+        self._save_settings()
+    
+    async def get_settings(self) -> Dict[str, Any]:
         """
         Get all settings
         
         Returns:
-            Dict of settings
+            Dictionary of all settings
         """
-        return self.settings
+        return self._settings.copy()
     
-    async def save_settings(self, settings: Dict[str, str]) -> bool:
+    async def save_settings(self, settings: Dict[str, Any]):
         """
-        Save settings
+        Save multiple settings
         
         Args:
-            settings: Dict of settings to save
-            
-        Returns:
-            True if successful
+            settings: Dictionary of settings to save
         """
-        # Update settings
-        self.settings.update(settings)
-        
-        # Save to file
-        self._save_settings_to_file()
-        
-        return True
+        self._settings.update(settings)
+        self._save_settings()
     
     async def validate_settings(self, settings: Dict[str, str]) -> Tuple[bool, Optional[str]]:
         """
@@ -75,15 +105,24 @@ class SettingsService:
             settings: Dict of settings to validate
             
         Returns:
-            Tuple of (valid, error_message)
+            Tuple of (is_valid, error_message)
         """
         # Validate Supabase settings if provided
-        if 'SUPABASE_URL' in settings and 'SUPABASE_ANON_KEY' in settings:
+        if 'SUPABASE_URL' in settings or 'SUPABASE_ANON_KEY' in settings:
+            # Both URL and key must be provided together
+            if 'SUPABASE_URL' not in settings or 'SUPABASE_ANON_KEY' not in settings:
+                return False, "Both Supabase URL and API key must be provided together"
+            
             supabase_url = settings['SUPABASE_URL']
             supabase_anon_key = settings['SUPABASE_ANON_KEY']
             
-            if not supabase_url or not supabase_anon_key:
-                return False, "Supabase URL and API key are required"
+            # Validate URL format
+            if not supabase_url or not supabase_url.startswith(('http://', 'https://')):
+                return False, "Supabase URL must be a valid URL starting with http:// or https://"
+            
+            # Validate API key format (should be a non-empty string)
+            if not supabase_anon_key or len(supabase_anon_key) < 10:
+                return False, "Supabase API key appears to be invalid (too short)"
             
             try:
                 # Try to connect to Supabase
@@ -126,23 +165,21 @@ class SettingsService:
         if 'GITHUB_TOKEN' in settings:
             github_token = settings['GITHUB_TOKEN']
             
-            if not github_token:
-                return False, "GitHub token is required"
+            # Validate token format (should be a non-empty string)
+            if not github_token or len(github_token) < 10:
+                return False, "GitHub token appears to be invalid (too short)"
             
-            # Additional GitHub token validation could be added here
-            # For now, we just check that it's not empty
+            # Validate token with GitHub API
+            try:
+                headers = {
+                    'Authorization': f'token {github_token}',
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+                response = requests.get('https://api.github.com/user', headers=headers)
+                
+                if response.status_code != 200:
+                    return False, f"GitHub token validation failed: {response.json().get('message', 'Unknown error')}"
+            except Exception as e:
+                return False, f"GitHub token validation failed: {str(e)}"
         
         return True, None
-    
-    def get_setting(self, key: str, default: Any = None) -> Any:
-        """
-        Get a setting value
-        
-        Args:
-            key: Setting key
-            default: Default value if not found
-            
-        Returns:
-            Setting value or default
-        """
-        return self.settings.get(key, default)
