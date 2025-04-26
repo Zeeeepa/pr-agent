@@ -1,0 +1,111 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pre-commit ruff
+
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files
+        continue-on-error: true  # Make this non-blocking for now
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build test Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: false
+          load: true
+          tags: codiumai/pr-agent:test
+          cache-from: type=gha,scope=dev
+          cache-to: type=gha,mode=max,scope=dev
+          target: test
+
+      - name: Run unit tests
+        run: docker run --rm codiumai/pr-agent:test pytest -v tests/unittest
+
+      - name: Run code coverage
+        run: |
+          docker run --name test_container codiumai/pr-agent:test pytest tests/unittest --cov=pr_agent --cov-report term --cov-report xml:coverage.xml
+          docker cp test_container:/app/coverage.xml coverage.xml
+          docker rm test_container
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.xml
+          fail_ci_if_error: false
+
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build GitHub App image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: false
+          load: true
+          tags: codiumai/pr-agent:github-app-latest
+          cache-from: type=gha,scope=prod
+          cache-to: type=gha,mode=max,scope=prod
+          target: github_app
+
+      - name: Build CLI image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: false
+          load: true
+          tags: codiumai/pr-agent:cli-latest
+          cache-from: type=gha,scope=prod
+          cache-to: type=gha,mode=max,scope=prod
+          target: cli
