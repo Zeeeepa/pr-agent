@@ -8,7 +8,6 @@ ExecServer is an extension to PR-Agent that provides a dashboard for managing Gi
 - **GitHub Workflow Management**: View and manage GitHub workflows and workflow runs
 - **Event Logging**: Log and view all GitHub events
 - **AI Assistant**: Chat with an AI assistant to help with project management
-- **Project Requirements**: Track project requirements and their status
 
 ## Architecture
 
