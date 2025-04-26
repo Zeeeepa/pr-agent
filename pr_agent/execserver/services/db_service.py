@@ -30,15 +30,22 @@ class DatabaseService:
     """
     Service for managing database operations
     """
-    
-    def __init__(self, settings_service=None):
-        """Initialize the database service"""
-        self.settings_service = settings_service
-        self.supabase = None
-        self.migration_service = None
-        self.connection_error = None
-        self._initialize_supabase()
+    def __init__(self, supabase_url: str = None, supabase_anon_key: str = None):
+        """
+        Initialize the database service
         
+        Args:
+            supabase_url: Supabase URL (optional, can be set later)
+            supabase_anon_key: Supabase anonymous key (optional, can be set later)
+        """
+        self.supabase = None
+        self.supabase_url = supabase_url
+        self.supabase_anon_key = supabase_anon_key
+        
+        # Connect to Supabase if credentials are provided
+        if supabase_url and supabase_anon_key:
+            self._connect_to_supabase(supabase_url, supabase_anon_key, "init")
+    
     def _initialize_supabase(self):
         """Initialize the Supabase client"""
         try:
@@ -193,37 +200,43 @@ class DatabaseService:
             return False, REQUIRED_SQL_FUNCTIONS
         
         try:
-            # Query PostgreSQL's information schema to check for function existence
             missing_functions = []
             
-            for function_name in REQUIRED_SQL_FUNCTIONS:
-                # Use a direct query to check if the function exists
-                try:
-                    # This query checks if the function exists in the public schema
-                    query = f"""
-                    SELECT EXISTS (
-                        SELECT 1 
-                        FROM pg_proc p
-                        JOIN pg_namespace n ON p.pronamespace = n.oid
-                        WHERE n.nspname = 'public'
-                        AND p.proname = '{function_name}'
-                    )
-                    """
-                    # We can't use the function directly since it might not exist
-                    # So we use a raw SQL query via the REST API
-                    result = self.supabase.rpc('exec_sql', {'sql': query}).execute()
+            # Use a single parameterized query to check for all functions at once
+            query = """
+            SELECT proname 
+            FROM pg_proc p
+            JOIN pg_namespace n ON p.pronamespace = n.oid
+            WHERE n.nspname = 'public'
+            AND p.proname = ANY($1::text[])
+            """
+            
+            try:
+                # We need to use exec_sql to execute the query
+                result = self.supabase.rpc('exec_sql', {
+                    'sql': query,
+                    'params': [REQUIRED_SQL_FUNCTIONS]
+                }).execute()
+                
+                # If we get here, exec_sql exists, but we need to check the result
+                if result.data:
+                    found_functions = {r['proname'] for r in result.data}
+                    missing_functions = [
+                        f for f in REQUIRED_SQL_FUNCTIONS 
+                        if f not in found_functions
+                    ]
+                else:
+                    # No functions found
+                    missing_functions = REQUIRED_SQL_FUNCTIONS
                     
-                    # If we get here, exec_sql exists, but we need to check the result
-                    if not result.data or not result.data[0].get('exists', False):
-                        missing_functions.append(function_name)
-                except Exception:
-                    # If we get an error, it's likely because exec_sql doesn't exist
-                    missing_functions.append(function_name)
+            except Exception:
+                # If we get an error, it's likely because exec_sql doesn't exist
+                missing_functions = REQUIRED_SQL_FUNCTIONS
             
             all_functions_exist = len(missing_functions) == 0
             return all_functions_exist, missing_functions
         except Exception as e:
-            logger.error(f"Error checking required SQL functions: {str(e)}")
+            logger.error("Error checking required SQL functions", exc_info=True)
             return False, REQUIRED_SQL_FUNCTIONS
     
     async def get_initdb_script_path(self) -> str:

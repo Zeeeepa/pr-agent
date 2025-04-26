@@ -7,6 +7,7 @@ routes, and error handling.
 
 import os
 import asyncio
+from typing import Dict, Any, Optional
 from pathlib import Path
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -138,55 +139,90 @@ async def health_check():
     """Health check endpoint for monitoring."""
     return {"status": "ok", "version": "0.1.0"}
 
-# Database initialization
+async def check_and_init_database(supabase_url: str, supabase_anon_key: str) -> bool:
+    """
+    Check for required SQL functions and initialize the database
+    
+    Args:
+        supabase_url: Supabase URL
+        supabase_anon_key: Supabase anonymous key
+        
+    Returns:
+        True if database initialization was successful, False otherwise
+    """
+    from pr_agent.execserver.services.db_service import DatabaseService
+    db_service = DatabaseService()
+    
+    # Check if required SQL functions exist
+    functions_exist, missing_functions = await db_service.check_required_sql_functions()
+    
+    if not functions_exist:
+        # Get the path to the initdb.py script
+        initdb_path = await db_service.get_initdb_script_path()
+        log_missing_functions_warning(missing_functions, initdb_path, supabase_url, supabase_anon_key)
+    
+    try:
+        # Set a timeout for database initialization to prevent hanging
+        async with asyncio.timeout(30):  # 30 seconds timeout
+            success = await initialize_database(supabase_url, supabase_anon_key)
+            return success
+    except asyncio.TimeoutError:
+        logger.error("Database initialization timed out")
+        return False
+    except Exception as e:
+        logger.error(f"Database initialization failed: {str(e)}")
+        return False
+
+def log_missing_functions_warning(missing_functions: list, initdb_path: str, supabase_url: str, supabase_anon_key: str):
+    """
+    Log warnings about missing SQL functions with instructions on how to fix
+    
+    Args:
+        missing_functions: List of missing SQL function names
+        initdb_path: Path to the initdb.py script
+        supabase_url: Supabase URL
+        supabase_anon_key: Supabase anonymous key
+    """
+    logger.warning(f"Required SQL functions are missing: {', '.join(missing_functions)}")
+    logger.warning(f"Please run the database initialization script to create these functions:")
+    logger.warning(f"cd {os.path.dirname(initdb_path)}")
+    logger.warning(f"python initdb.py --url \"{supabase_url}\" --key \"{supabase_anon_key}\"")
+    logger.warning("Then restart the application.")
+    logger.warning("Attempting to initialize database anyway, but it may fail...")
+
 @app.on_event("startup")
 async def startup_db_client():
-    """Initialize database on startup."""
+    """Initialize the database client on startup"""
+    global db_service, github_service, workflow_service, event_service
+    
     try:
-        # Try to get Supabase credentials from settings service first
-        supabase_url = settings_service.get_setting('SUPABASE_URL')
-        supabase_anon_key = settings_service.get_setting('SUPABASE_ANON_KEY')
-        
-        # If not found in settings service, try config
-        if not supabase_url or not supabase_anon_key:
-            supabase_url = get_supabase_url()
-            supabase_anon_key = get_supabase_anon_key()
+        # Get Supabase credentials from environment variables
+        supabase_url = os.environ.get("SUPABASE_URL")
+        supabase_anon_key = os.environ.get("SUPABASE_ANON_KEY")
         
         # Initialize database if credentials are available
         if supabase_url and supabase_anon_key:
             logger.info("Initializing database...")
             
-            # Create a temporary database service to check for required SQL functions
-            from pr_agent.execserver.services.db_service import DatabaseService
-            db_service = DatabaseService()
+            # Check for required SQL functions and initialize the database
+            success = await check_and_init_database(supabase_url, supabase_anon_key)
             
-            # Check if required SQL functions exist
-            functions_exist, missing_functions = await db_service.check_required_sql_functions()
-            
-            if not functions_exist:
-                # Get the path to the initdb.py script
-                initdb_path = await db_service.get_initdb_script_path()
-                
-                # Log a warning with instructions on how to fix the issue
-                logger.warning(f"Required SQL functions are missing: {', '.join(missing_functions)}")
-                logger.warning(f"Please run the database initialization script to create these functions:")
-                logger.warning(f"cd {os.path.dirname(initdb_path)}")
-                logger.warning(f"python initdb.py --url \"{supabase_url}\" --key \"{supabase_anon_key}\"")
-                logger.warning("Then restart the application.")
-                
-                # Continue with initialization, but it will likely fail
-                logger.warning("Attempting to initialize database anyway, but it may fail...")
-            
-            # Try to initialize the database
-            success = await initialize_database(supabase_url, supabase_anon_key)
             if success:
                 logger.info("Database initialized successfully")
             else:
-                logger.warning("Database initialization failed")
+                logger.error("Failed to initialize database")
         else:
-            logger.warning("Supabase credentials not found, skipping database initialization")
+            logger.warning("Supabase credentials not found in environment variables")
+            
+        # Initialize services
+        db_service = DatabaseService()
+        github_service = GitHubService()
+        workflow_service = WorkflowService()
+        event_service = EventService(db_service, github_service, workflow_service)
+        
+        logger.info("Services initialized successfully")
     except Exception as e:
-        logger.error(f"Error initializing database: {str(e)}")
+        logger.error(f"Error initializing services: {str(e)}")
 
 # Main entry point
 if __name__ == "__main__":
