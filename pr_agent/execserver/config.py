@@ -6,6 +6,8 @@ leveraging the PR-Agent's configuration system.
 """
 
 import os
+import json
+from pathlib import Path
 from dotenv import load_dotenv
 from pr_agent.config_loader import config_manager
 from pr_agent.error_handler import ConfigurationError
@@ -41,6 +43,27 @@ CONFIG_DEFAULTS = {
     "LOG_FORMAT": "CONSOLE",
 }
 
+# Path for local settings file
+LOCAL_SETTINGS_FILE = Path(__file__).parent / "local_settings.json"
+
+def load_local_settings():
+    """
+    Load settings from local settings file
+    
+    Returns:
+        Dict containing local settings or empty dict if file doesn't exist
+    """
+    if LOCAL_SETTINGS_FILE.exists():
+        try:
+            with open(LOCAL_SETTINGS_FILE, 'r') as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            # If the file is invalid JSON, return empty dict
+            return {}
+    return {}
+
+# Load local settings
+local_settings = load_local_settings()
 
 def get_config(key, default=None):
     """
@@ -56,6 +79,10 @@ def get_config(key, default=None):
     Raises:
         ConfigurationError: If the key is required but not found
     """
+    # First check local settings
+    if key in local_settings:
+        return local_settings[key]
+    
     # Use the default from CONFIG_DEFAULTS if provided
     if default is None and key in CONFIG_DEFAULTS:
         default = CONFIG_DEFAULTS[key]
@@ -162,3 +189,34 @@ def get_setting_or_env(key, default=None):
         The value of the setting or default
     """
     return get_config(key, default)
+
+
+# Function to update local settings
+def update_local_settings(settings):
+    """
+    Update local settings file with new settings
+    
+    Args:
+        settings (dict): Dictionary of settings to update
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        # Load existing settings
+        current_settings = load_local_settings()
+        
+        # Update with new settings
+        current_settings.update(settings)
+        
+        # Write back to file
+        with open(LOCAL_SETTINGS_FILE, 'w') as f:
+            json.dump(current_settings, f, indent=2)
+            
+        # Update in-memory settings
+        global local_settings
+        local_settings = current_settings
+        
+        return True
+    except Exception:
+        return False

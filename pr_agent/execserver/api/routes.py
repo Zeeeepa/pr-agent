@@ -13,7 +13,7 @@ from ..services.event_service import EventService
 from ..services.workflow_service import WorkflowService
 from pr_agent.servers.utils import verify_signature
 from pr_agent.servers.github_app import handle_github_webhooks as pr_agent_handle_github_webhooks
-from ..config import get_setting_or_env
+from ..config import get_setting_or_env, update_local_settings
 
 # Create router
 router = APIRouter()
@@ -53,6 +53,25 @@ async def handle_github_webhooks(background_tasks: BackgroundTasks, request: Req
     background_tasks.add_task(event_service.process_webhook, event_type, body)
     
     return {"status": "processing"}
+
+# Settings endpoint
+@router.post("/api/v1/settings")
+async def update_settings(settings: Dict[str, Any]):
+    """
+    Update application settings
+    
+    Args:
+        settings: Dictionary of settings to update
+        
+    Returns:
+        Status of the update operation
+    """
+    success = update_local_settings(settings)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to update settings")
+    
+    return {"status": "success", "message": "Settings updated successfully"}
 
 # Projects endpoints
 @router.get("/api/v1/projects")
