@@ -41,6 +41,14 @@ CONFIG_DEFAULTS = {
     "LOG_FORMAT": "CONSOLE",
 }
 
+# List of optional configuration keys that won't raise an error if missing
+OPTIONAL_CONFIG_KEYS = [
+    "GITHUB_APP_ID", 
+    "GITHUB_APP_PRIVATE_KEY", 
+    "GITHUB_APP_INSTALLATION_ID",
+    "SUPABASE_URL",
+    "SUPABASE_ANON_KEY"
+]
 
 def get_config(key, default=None):
     """
@@ -71,8 +79,7 @@ def get_config(key, default=None):
     value = config_manager.get(key, default)
     
     # Raise error if value is required but not found
-    # GitHub App ID, Private Key, and Installation ID are optional
-    if value is None and default is None and key not in ["GITHUB_APP_ID", "GITHUB_APP_PRIVATE_KEY", "GITHUB_APP_INSTALLATION_ID"]:
+    if value is None and default is None and key not in OPTIONAL_CONFIG_KEYS:
         raise ConfigurationError(f"Required configuration '{key}' not found")
         
     return value
@@ -108,6 +115,14 @@ def get_supabase_url():
 def get_supabase_anon_key():
     """Get Supabase anonymous key with proper error handling."""
     return get_config("SUPABASE_ANON_KEY")
+
+
+# Check if Supabase is configured
+def is_supabase_configured():
+    """Check if Supabase credentials are configured."""
+    url = get_supabase_url()
+    key = get_supabase_anon_key()
+    return url is not None and key is not None and url != "" and key != ""
 
 
 # UI configuration
@@ -162,3 +177,19 @@ def get_setting_or_env(key, default=None):
         The value of the setting or default
     """
     return get_config(key, default)
+
+
+# Save configuration to environment
+def save_config(key, value):
+    """
+    Save a configuration value to environment
+    
+    Args:
+        key (str): The key to save
+        value: The value to save
+        
+    Returns:
+        bool: True if successful
+    """
+    os.environ[key] = str(value)
+    return True
