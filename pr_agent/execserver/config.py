@@ -63,7 +63,8 @@ def get_config(key, default=None):
     value = config_manager.get(key, default)
     
     # Raise error if value is required but not found
-    if value is None and default is None:
+    # GitHub App ID, Private Key, and Installation ID are optional
+    if value is None and default is None and key not in ["GITHUB_APP_ID", "GITHUB_APP_PRIVATE_KEY", "GITHUB_APP_INSTALLATION_ID"]:
         raise ConfigurationError(f"Required configuration '{key}' not found")
         
     return value
