@@ -9,6 +9,7 @@ This directory contains GitHub Actions workflows for automating testing, buildin
 This workflow runs on every push to the main branch and on pull requests. It performs the following tasks:
 
 1. **Lint**: Runs pre-commit hooks and code linting tools to ensure code quality
+   - Note: Currently set to continue-on-error to avoid blocking PRs
 2. **Test**: Builds a Docker test image and runs unit tests with code coverage
 3. **Build Images**: Builds Docker images for different components of the application
 
@@ -26,6 +27,17 @@ This workflow is triggered when a new release is published or can be run manuall
 Trigger this workflow manually:
 - Go to Actions → Deploy PR-Agent → Run workflow
 - Optionally specify a version, or leave blank to use the latest tag
+
+## Existing Workflows
+
+The repository also contains several existing workflows that are maintained for compatibility:
+
+- **build-and-test.yaml**: Basic build and test workflow
+- **code_coverage.yaml**: Generates code coverage reports
+- **pre-commit.yml**: Runs pre-commit hooks (currently disabled)
+- **docs-ci.yaml**: Validates documentation
+- **e2e_tests.yaml**: Runs end-to-end tests
+- **pr-agent-review.yaml**: Uses PR-Agent to review PRs
 
 ## Required Secrets
 
