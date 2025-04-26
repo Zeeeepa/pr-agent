@@ -3,6 +3,7 @@ import uuid
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import json
+import logging
 
 from supabase import create_client, Client
 
@@ -12,6 +13,8 @@ from ..models.trigger import Trigger
 from ..models.workflow import Workflow, WorkflowRun
 from ..config import get_supabase_url, get_supabase_anon_key
 
+# Set up logging
+logger = logging.getLogger(__name__)
 
 class DatabaseService:
     """
@@ -24,7 +27,12 @@ class DatabaseService:
         self._initialize_supabase()
         
     def _initialize_supabase(self):
-        """Initialize the Supabase client"""
+        """
+        Initialize the Supabase client
+        
+        This method attempts to initialize the Supabase client using settings
+        from the settings service or from the config.
+        """
         try:
             # Try to get settings from settings service first
             if self.settings_service:
@@ -32,22 +40,61 @@ class DatabaseService:
                 supabase_anon_key = self.settings_service.get_setting('SUPABASE_ANON_KEY')
                 
                 if supabase_url and supabase_anon_key:
+                    logger.info("Initializing Supabase from settings service")
                     self.supabase = create_client(supabase_url, supabase_anon_key)
+                    # Test connection with a simple query
+                    self.supabase.table('events').select('*').limit(1).execute()
+                    logger.info("Supabase initialized successfully from settings service")
                     return
             
             # Fall back to config if settings service doesn't have the values
-            self.supabase = create_client(get_supabase_url(), get_supabase_anon_key())
+            supabase_url = get_supabase_url()
+            supabase_anon_key = get_supabase_anon_key()
+            
+            if supabase_url and supabase_anon_key:
+                logger.info("Initializing Supabase from config")
+                self.supabase = create_client(supabase_url, supabase_anon_key)
+                # Test connection with a simple query
+                self.supabase.table('events').select('*').limit(1).execute()
+                logger.info("Supabase initialized successfully from config")
+                return
+                
+            logger.warning("Supabase URL and API key not found in settings or config")
         except Exception as e:
             # Log the error but don't raise it - we'll handle missing Supabase in each method
-            print(f"Failed to initialize Supabase: {str(e)}")
+            logger.error(f"Failed to initialize Supabase: {str(e)}")
+            self.supabase = None
     
     def _ensure_supabase(self):
-        """Ensure Supabase is initialized"""
+        """
+        Ensure Supabase is initialized
+        
+        Raises:
+            ValueError: If Supabase is not initialized
+        """
         if not self.supabase:
+            # Try to initialize again in case settings were updated
             self._initialize_supabase()
             
         if not self.supabase:
             raise ValueError("Supabase is not initialized. Please provide Supabase URL and API key in settings.")
+    
+    def is_connected(self) -> bool:
+        """
+        Check if the database connection is established
+        
+        Returns:
+            bool: True if connected, False otherwise
+        """
+        try:
+            if not self.supabase:
+                return False
+                
+            # Test connection with a simple query
+            self.supabase.table('events').select('*').limit(1).execute()
+            return True
+        except Exception:
+            return False
         
     # Event methods
     async def log_event(self, event_type: str, repository: str, payload: Dict[str, Any]) -> Event:
@@ -61,6 +108,9 @@ class DatabaseService:
             
         Returns:
             The created Event object
+            
+        Raises:
+            ValueError: If Supabase is not initialized
         """
         self._ensure_supabase()
         
@@ -89,6 +139,9 @@ class DatabaseService:
             
         Returns:
             The updated Event object
+            
+        Raises:
+            ValueError: If Supabase is not initialized or event not found
         """
         self._ensure_supabase()
         
@@ -116,6 +169,9 @@ class DatabaseService:
             
         Returns:
             The Event object or None if not found
+            
+        Raises:
+            ValueError: If Supabase is not initialized
         """
         self._ensure_supabase()
         
@@ -140,6 +196,9 @@ class DatabaseService:
             
         Returns:
             List of Event objects
+            
+        Raises:
+            ValueError: If Supabase is not initialized
         """
         self._ensure_supabase()
         
@@ -165,6 +224,9 @@ class DatabaseService:
             
         Returns:
             The created Project object
+            
+        Raises:
+            ValueError: If Supabase is not initialized
         """
         self._ensure_supabase()
         
@@ -180,6 +242,9 @@ class DatabaseService:
             
         Returns:
             The Project object or None if not found
+            
+        Raises:
+            ValueError: If Supabase is not initialized
         """
         self._ensure_supabase()
         
@@ -197,6 +262,9 @@ class DatabaseService:
         
         Returns:
             List of Project objects
+            
+        Raises:
+            ValueError: If Supabase is not initialized
         """
         self._ensure_supabase()
         
@@ -213,6 +281,9 @@ class DatabaseService:
             
         Returns:
             The created Trigger object
+            
+        Raises:
+            ValueError: If Supabase is not initialized
         """
         self._ensure_supabase()
         
@@ -228,6 +299,9 @@ class DatabaseService:
             
         Returns:
             The Trigger object or None if not found
+            
+        Raises:
+            ValueError: If Supabase is not initialized
         """
         self._ensure_supabase()
         
@@ -248,6 +322,9 @@ class DatabaseService:
             
         Returns:
             List of Trigger objects
+            
+        Raises:
+            ValueError: If Supabase is not initialized
         """
         self._ensure_supabase()
         
@@ -264,6 +341,9 @@ class DatabaseService:
             
         Returns:
             The updated Trigger object or None if not found
+            
+        Raises:
+            ValueError: If Supabase is not initialized
         """
         self._ensure_supabase()
         
@@ -285,6 +365,9 @@ class DatabaseService:
             
         Returns:
             The created Workflow object
+            
+        Raises:
+            ValueError: If Supabase is not initialized
         """
         self._ensure_supabase()
         
@@ -300,6 +383,9 @@ class DatabaseService:
             
         Returns:
             The Workflow object or None if not found
+            
+        Raises:
+            ValueError: If Supabase is not initialized
         """
         self._ensure_supabase()
         
@@ -320,6 +406,9 @@ class DatabaseService:
             
         Returns:
             List of Workflow objects
+            
+        Raises:
+            ValueError: If Supabase is not initialized
         """
         self._ensure_supabase()
         
@@ -335,6 +424,9 @@ class DatabaseService:
             
         Returns:
             The created WorkflowRun object
+            
+        Raises:
+            ValueError: If Supabase is not initialized
         """
         self._ensure_supabase()
         
@@ -354,6 +446,9 @@ class DatabaseService:
             
         Returns:
             List of WorkflowRun objects
+            
+        Raises:
+            ValueError: If Supabase is not initialized
         """
         self._ensure_supabase()
         
