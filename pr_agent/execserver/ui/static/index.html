@@ -102,48 +102,33 @@
             background-color: var(--chat-user-bg);
             text-align: right;
         }
-        .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
+        .event-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
         }
-        .btn-success {
-            background-color: var(--success-color);
-            border-color: var(--success-color);
+        .trigger-connection {
+            border-left: 2px dashed #ccc;
+            padding-left: 15px;
+            margin-left: 10px;
         }
-        .btn-danger {
-            background-color: var(--danger-color);
-            border-color: var(--danger-color);
+        .connection-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background-color: #28a745;
+            border-radius: 50%;
+            margin-right: 5px;
         }
-        .btn-info {
-            background-color: var(--info-color);
-            border-color: var(--info-color);
+        .event-flow {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
         }
-        .btn-warning {
-            background-color: var(--warning-color);
-            border-color: var(--warning-color);
-        }
-        .btn-secondary {
-            background-color: var(--secondary-color);
-            border-color: var(--secondary-color);
-        }
-        .btn-outline-primary, .btn-outline-success, .btn-outline-danger, 
-        .btn-outline-info, .btn-outline-warning, .btn-outline-secondary {
-            color: var(--text-color);
-        }
-        .form-control {
-            background-color: var(--card-bg);
-            color: var(--text-color);
-            border-color: var(--border-color);
-        }
-        .form-control:focus {
-            background-color: var(--card-bg);
-            color: var(--text-color);
-        }
-        .theme-toggle {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
+        .flow-arrow {
+            color: #6c757d;
+            margin: 0 10px;
+
         }
     </style>
 </head>
@@ -164,9 +149,6 @@
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="workflows-tab" data-bs-toggle="tab" data-bs-target="#workflows" type="button" role="tab" aria-controls="workflows" aria-selected="false">GitHub Workflows</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab" aria-controls="events" aria-selected="false">Recent Events</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat" type="button" role="tab" aria-controls="chat" aria-selected="false">AI Assistant</button>
@@ -190,15 +172,75 @@
                     <div class="col-md-6">
                         <div class="card">
                             <div class="card-header">
-                                Recent Events
+                                System Status
                             </div>
                             <div class="card-body">
-                                <p class="card-text">There have been <strong>12</strong> events in the last 24 hours.</p>
-                                <a href="#" class="btn btn-primary" onclick="document.getElementById('events-tab').click();">View Events</a>
+                                <p class="card-text"><span class="status-active">●</span> All systems operational</p>
+                                <p class="card-text">Last updated: <span id="last-updated">2023-01-01 12:34:56</span></p>
                             </div>
                         </div>
                     </div>
                 </div>
+                
+                <!-- Recent Events Section (Moved from separate tab) -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between">
+                                <span>Recent Events</span>
+                                <button class="btn btn-sm btn-outline-secondary" id="refresh-events">Refresh</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="event-list">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Event Type</th>
+                                                <th>Repository</th>
+                                                <th>Timestamp</th>
+                                                <th>Processed</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="events-table-body">
+                                            <tr>
+                                                <td>pull_request</td>
+                                                <td>owner/repo</td>
+                                                <td>2023-01-01 12:34:56</td>
+                                                <td><span class="status-active">Yes</span></td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-info">View Details</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>push</td>
+                                                <td>owner/repo</td>
+                                                <td>2023-01-01 12:30:00</td>
+                                                <td><span class="status-active">Yes</span></td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-info">View Details</button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>issue_comment</td>
+                                                <td>owner/repo</td>
+                                                <td>2023-01-01 12:15:30</td>
+                                                <td><span class="status-active">Yes</span></td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-info">View Details</button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="d-grid gap-2 mt-3">
+                                    <button class="btn btn-outline-primary" id="load-more-events">Load More</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="row mt-4">
                     <div class="col-md-12">
                         <div class="card">
@@ -215,17 +257,76 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Event Flow Visualization -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                Event Flow Visualization
+                            </div>
+                            <div class="card-body">
+                                <div class="event-flow">
+                                    <div class="card p-2">GitHub Event</div>
+                                    <div class="flow-arrow">→</div>
+                                    <div class="card p-2">Event Trigger</div>
+                                    <div class="flow-arrow">→</div>
+                                    <div class="card p-2">Action Execution</div>
+                                    <div class="flow-arrow">→</div>
+                                    <div class="card p-2">Notification</div>
+                                </div>
+                                <p class="text-muted mt-3">This visualization shows how events flow through the system. Events from GitHub trigger actions based on your configured triggers, which then execute and send notifications.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <div class="tab-pane fade" id="triggers" role="tabpanel" aria-labelledby="triggers-tab">
                 <div class="d-flex justify-content-between mb-3">
                     <h3>Event Triggers</h3>
-                    <button class="btn btn-primary">Create New Trigger</button>
+                    <button class="btn btn-primary" id="create-trigger-btn">Create New Trigger</button>
+                </div>
+                
+                <!-- Trigger Filter Controls -->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="filter-repository" class="form-label">Repository</label>
+                                <select class="form-select" id="filter-repository">
+                                    <option value="">All Repositories</option>
+                                    <option value="owner/repo">owner/repo</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="filter-event-type" class="form-label">Event Type</label>
+                                <select class="form-select" id="filter-event-type">
+                                    <option value="">All Event Types</option>
+                                    <option value="pull_request">Pull Request</option>
+                                    <option value="push">Push</option>
+                                    <option value="issue_comment">Issue Comment</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="filter-status" class="form-label">Status</label>
+                                <select class="form-select" id="filter-status">
+                                    <option value="">All Statuses</option>
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+                            <button class="btn btn-outline-secondary" id="reset-filters">Reset Filters</button>
+                            <button class="btn btn-primary" id="apply-filters">Apply Filters</button>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="card">
                     <div class="card-body">
-                        <table class="table">
+                        <table class="table" id="triggers-table">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -237,28 +338,43 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                <!-- PR Comment Trigger with Interconnection -->
                                 <tr>
                                     <td>PR Comment Trigger</td>
                                     <td>owner/repo</td>
                                     <td>pull_request.opened</td>
-                                    <td>Add PR comment</td>
+                                    <td>
+                                        <div>Add PR comment</div>
+                                        <div class="trigger-connection mt-2">
+                                            <span class="connection-dot"></span> Triggers: Workflow CI
+                                        </div>
+                                    </td>
                                     <td><span class="status-active">Active</span></td>
                                     <td>
                                         <button class="btn btn-sm btn-outline-primary">Edit</button>
                                         <button class="btn btn-sm btn-outline-danger">Disable</button>
                                     </td>
                                 </tr>
+                                
+                                <!-- CI Workflow Trigger with Interconnection -->
                                 <tr>
                                     <td>CI Workflow Trigger</td>
                                     <td>owner/repo</td>
                                     <td>push</td>
-                                    <td>Run GitHub workflow</td>
+                                    <td>
+                                        <div>Run GitHub workflow</div>
+                                        <div class="trigger-connection mt-2">
+                                            <span class="connection-dot"></span> Triggers: Notification
+                                        </div>
+                                    </td>
                                     <td><span class="status-active">Active</span></td>
                                     <td>
                                         <button class="btn btn-sm btn-outline-primary">Edit</button>
                                         <button class="btn btn-sm btn-outline-danger">Disable</button>
                                     </td>
                                 </tr>
+                                
+                                <!-- Issue Comment Trigger -->
                                 <tr>
                                     <td>Issue Comment Trigger</td>
                                     <td>owner/repo</td>
@@ -272,6 +388,19 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+                
+                <!-- Trigger Connections Visualization -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        Trigger Connections
+                    </div>
+                    <div class="card-body">
+                        <p>Visualize how your triggers are interconnected and how events flow through your system.</p>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                            <button class="btn btn-outline-primary" id="view-connections">View Connections Diagram</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -380,55 +509,8 @@
                 </div>
             </div>
             
-            <div class="tab-pane fade" id="events" role="tabpanel" aria-labelledby="events-tab">
-                <h3 class="mb-3">Recent Events</h3>
-                
-                <div class="card">
-                    <div class="card-body">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Event Type</th>
-                                    <th>Repository</th>
-                                    <th>Timestamp</th>
-                                    <th>Processed</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>pull_request</td>
-                                    <td>owner/repo</td>
-                                    <td>2023-01-01 12:34:56</td>
-                                    <td><span class="status-active">Yes</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-info">View Details</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>push</td>
-                                    <td>owner/repo</td>
-                                    <td>2023-01-01 12:30:00</td>
-                                    <td><span class="status-active">Yes</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-info">View Details</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>issue_comment</td>
-                                    <td>owner/repo</td>
-                                    <td>2023-01-01 12:15:30</td>
-                                    <td><span class="status-active">Yes</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-info">View Details</button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            
+            <!-- AI Assistant Chat Tab -->
+
             <div class="tab-pane fade" id="chat" role="tabpanel" aria-labelledby="chat-tab">
                 <div class="d-flex justify-content-between mb-3">
                     <h3>Chat with AI Human Agent</h3>
@@ -560,37 +642,7 @@
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const themeToggleBtn = document.getElementById('theme-toggle');
-            const themeIcon = document.getElementById('theme-icon');
-            const themeText = document.getElementById('theme-text');
-            
-            const savedTheme = localStorage.getItem('theme') || 
-                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-            
-            if (savedTheme === 'dark') {
-                document.documentElement.setAttribute('data-theme', 'dark');
-                themeIcon.textContent = '☀️';
-                themeText.textContent = 'Light Mode';
-            }
-            
-            themeToggleBtn.addEventListener('click', function() {
-                const currentTheme = document.documentElement.getAttribute('data-theme');
-                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                
-                document.documentElement.setAttribute('data-theme', newTheme);
-                localStorage.setItem('theme', newTheme);
-                
-                if (newTheme === 'dark') {
-                    themeIcon.textContent = '☀️';
-                    themeText.textContent = 'Light Mode';
-                } else {
-                    themeIcon.textContent = '🌙';
-                    themeText.textContent = 'Dark Mode';
-                }
-            });
-        });
-    </script>
+    <script src="/js/event-system.js"></script>
+
 </body>
 </html>
