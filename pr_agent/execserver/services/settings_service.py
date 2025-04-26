@@ -6,8 +6,11 @@ This module provides a service for managing application settings.
 
 import os
 import json
-from typing import Dict, Any, Optional
+import logging
+from typing import Dict, Any, Optional, Tuple
 from supabase import create_client, Client
+
+logger = logging.getLogger(__name__)
 
 class SettingsService:
     """
@@ -25,7 +28,8 @@ class SettingsService:
             try:
                 with open(self.settings_file, 'r') as f:
                     self.settings = json.load(f)
-            except Exception:
+            except Exception as e:
+                logger.error(f"Failed to load settings: {str(e)}")
                 self.settings = {}
     
     def _save_settings_to_file(self):
@@ -33,8 +37,8 @@ class SettingsService:
         try:
             with open(self.settings_file, 'w') as f:
                 json.dump(self.settings, f)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Failed to save settings to file: {str(e)}")
     
     async def get_settings(self) -> Dict[str, str]:
         """
@@ -63,7 +67,7 @@ class SettingsService:
         
         return True
     
-    async def validate_settings(self, settings: Dict[str, str]) -> bool:
+    async def validate_settings(self, settings: Dict[str, str]) -> Tuple[bool, Optional[str]]:
         """
         Validate settings
         
@@ -71,10 +75,7 @@ class SettingsService:
             settings: Dict of settings to validate
             
         Returns:
-            True if valid
-            
-        Raises:
-            Exception: If validation fails
+            Tuple of (valid, error_message)
         """
         # Validate Supabase settings if provided
         if 'SUPABASE_URL' in settings and 'SUPABASE_ANON_KEY' in settings:
@@ -82,26 +83,56 @@ class SettingsService:
             supabase_anon_key = settings['SUPABASE_ANON_KEY']
             
             if not supabase_url or not supabase_anon_key:
-                raise Exception("Supabase URL and API key are required")
+                return False, "Supabase URL and API key are required"
             
             try:
                 # Try to connect to Supabase
                 supabase = create_client(supabase_url, supabase_anon_key)
-                # Test a simple query
-                supabase.table('events').select('*').limit(1).execute()
+                
+                # Test a simple query to verify connection
+                result = supabase.table('migrations').select('*').limit(1).execute()
+                
+                # If we get here, the connection was successful
+                # Now check if the required tables exist
+                required_tables = ['events', 'projects', 'triggers', 'workflows', 'workflow_runs']
+                missing_tables = []
+                
+                for table in required_tables:
+                    try:
+                        supabase.table(table).select('*').limit(1).execute()
+                    except Exception:
+                        missing_tables.append(table)
+                
+                if missing_tables:
+                    # Tables are missing, but connection is valid
+                    # This is okay, as migrations will create them
+                    logger.info(f"Supabase connection valid, but missing tables: {', '.join(missing_tables)}")
+                    return True, None
+                
+                return True, None
             except Exception as e:
-                raise Exception(f"Failed to connect to Supabase: {str(e)}")
+                error_message = str(e)
+                # Check for specific error types to provide better feedback
+                if "not found" in error_message.lower():
+                    return False, "Failed to connect to Supabase: Table not found. Database may need migration."
+                elif "unauthorized" in error_message.lower() or "authentication" in error_message.lower():
+                    return False, "Failed to connect to Supabase: Invalid API key or unauthorized access."
+                elif "network" in error_message.lower() or "connection" in error_message.lower():
+                    return False, "Failed to connect to Supabase: Network or connection error."
+                else:
+                    return False, f"Failed to connect to Supabase: {error_message}"
         
         # Validate GitHub token if provided
         if 'GITHUB_TOKEN' in settings:
             github_token = settings['GITHUB_TOKEN']
             
             if not github_token:
-                raise Exception("GitHub token is required")
+                return False, "GitHub token is required"
             
             # Additional GitHub token validation could be added here
+            # For now, we just check that it's not empty
         
-        return True
+        return True, None
     
     def get_setting(self, key: str, default: Any = None) -> Any:
         """

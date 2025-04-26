@@ -511,6 +511,11 @@ function validateSettings() {
     const supabaseApiKey = document.getElementById('supabase-api-key').value;
     const validationMessage = document.getElementById('validation-message');
     
+    // Show loading state
+    validationMessage.textContent = 'Validating settings...';
+    validationMessage.className = 'validation-message';
+    validationMessage.style.display = 'block';
+    
     // Check if required fields are filled
     if (!supabaseUrl || !supabaseApiKey) {
         validationMessage.textContent = 'Error: Supabase URL and API key are required';
@@ -559,6 +564,11 @@ function saveSettings() {
     const supabaseApiKey = document.getElementById('supabase-api-key').value;
     const validationMessage = document.getElementById('validation-message');
     
+    // Show loading state
+    validationMessage.textContent = 'Saving settings...';
+    validationMessage.className = 'validation-message';
+    validationMessage.style.display = 'block';
+    
     // Check if required fields are filled
     if (!supabaseUrl || !supabaseApiKey) {
         validationMessage.textContent = 'Error: Supabase URL and API key are required';
@@ -577,33 +587,80 @@ function saveSettings() {
         GITHUB_TOKEN: githubApiKey,
         SUPABASE_URL: supabaseUrl,
         SUPABASE_ANON_KEY: supabaseApiKey
+    })
+    .then(success => {
+        if (success) {
+            validationMessage.textContent = 'Settings saved successfully';
+            validationMessage.className = 'validation-message validation-success';
+            
+            // Check database status
+            checkDatabaseStatus();
+            
+            setTimeout(() => {
+                validationMessage.style.display = 'none';
+            }, 2000);
+        } else {
+            validationMessage.textContent = 'Error: Failed to save settings';
+            validationMessage.className = 'validation-message validation-error';
+        }
+    })
+    .catch(error => {
+        validationMessage.textContent = `Error: ${error.message || 'Failed to save settings'}`;
+        validationMessage.className = 'validation-message validation-error';
     });
-    
-    validationMessage.textContent = 'Settings saved successfully';
-    validationMessage.className = 'validation-message validation-success';
-    validationMessage.style.display = 'block';
-    
-    setTimeout(() => {
-        validationMessage.style.display = 'none';
-    }, 2000);
 }
 
 /**
  * Save settings to server
  * @param {Object} settings - Settings object
+ * @returns {Promise<boolean>} - Promise resolving to success status
  */
 function saveSettingsToServer(settings) {
-    fetch(`${EVENT_SYSTEM.apiBaseUrl}/settings`, {
+    return fetch(`${EVENT_SYSTEM.apiBaseUrl}/settings`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify(settings)
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.detail || 'Failed to save settings');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        return true;
+    })
     .catch(error => {
         console.error('Error saving settings to server:', error);
+        throw error;
     });
+}
+
+/**
+ * Check database status
+ */
+function checkDatabaseStatus() {
+    fetch(`${EVENT_SYSTEM.apiBaseUrl}/database/status`)
+        .then(response => response.json())
+        .then(data => {
+            const statusElement = document.querySelector('.status-active');
+            if (statusElement) {
+                if (data.status === 'connected') {
+                    statusElement.textContent = '● All systems operational';
+                    statusElement.className = 'status-active';
+                } else {
+                    statusElement.textContent = '● Database disconnected';
+                    statusElement.className = 'status-inactive';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error checking database status:', error);
+        });
 }
 
 // Export functions for use in other scripts
