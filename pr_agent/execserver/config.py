@@ -59,6 +59,14 @@ def get_config(key, default=None):
     # Use the default from CONFIG_DEFAULTS if provided
     if default is None and key in CONFIG_DEFAULTS:
         default = CONFIG_DEFAULTS[key]
+    
+    # Handle the case where default is a list (like CORS_ORIGINS)
+    if isinstance(default, list):
+        value = os.getenv(key)
+        if value is not None:
+            # Parse comma-separated string into list if from environment
+            return [item.strip() for item in value.split(',')]
+        return default
         
     value = config_manager.get(key, default)
     
