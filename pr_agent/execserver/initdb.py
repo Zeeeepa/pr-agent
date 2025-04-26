@@ -17,6 +17,8 @@ Usage:
 import argparse
 import logging
 import sys
+import requests
+import json
 from supabase import create_client, Client
 
 # Set up logging
@@ -60,47 +62,93 @@ SQL_FUNCTIONS = [
     """
 ]
 
-def create_sql_functions(supabase: Client) -> bool:
+def create_sql_functions(supabase_url: str, supabase_key: str) -> bool:
     """
     Create the necessary SQL functions in Supabase
     
     Args:
-        supabase: Supabase client
+        supabase_url: Supabase URL
+        supabase_key: Supabase anonymous key
         
     Returns:
         True if successful, False otherwise
     """
     try:
-        for sql in SQL_FUNCTIONS:
-            logger.info(f"Executing SQL function creation...")
-            # Execute the SQL directly using the REST API
-            response = supabase.postgrest.rpc('exec_sql', {'sql': sql}).execute()
+        # Create Supabase client
+        supabase = create_client(supabase_url, supabase_key)
+        
+        # First, try to use the REST API directly for the first function (exec_sql)
+        # since we can't use exec_sql if it doesn't exist yet
+        logger.info("Creating exec_sql function...")
+        
+        # Direct REST API call to create the exec_sql function
+        headers = {
+            "apikey": supabase_key,
+            "Authorization": f"Bearer {supabase_key}",
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal"
+        }
+        
+        # Extract the REST API URL from the Supabase client
+        rest_url = supabase.postgrest_url
+        
+        # Create the exec_sql function first
+        exec_sql_function = SQL_FUNCTIONS[1]
+        
+        try:
+            # Try direct SQL execution via the REST API
+            response = requests.post(
+                f"{rest_url}/rpc/exec_sql",
+                headers=headers,
+                json={"sql": exec_sql_function}
+            )
             
-            if hasattr(response, 'error') and response.error:
-                logger.error(f"Error creating SQL function: {response.error}")
-                # If exec_sql doesn't exist yet, we need to create it first using raw SQL
-                if "exec_sql" in str(response.error):
-                    logger.info("Attempting to create exec_sql function directly...")
-                    # This is a bit of a hack, but we need to create the exec_sql function first
-                    # We'll use the raw REST API to execute SQL directly
-                    try:
-                        # Try using a direct SQL query if possible
-                        from postgrest.base_request import APIResponse
-                        sql_query = SQL_FUNCTIONS[1]  # The exec_sql function definition
-                        
-                        # Use the underlying client to execute SQL directly
-                        # This approach depends on the specific Supabase Python client version
-                        response = supabase.postgrest.schema('public').rpc('exec_sql', {'sql': sql_query})
-                        
-                        if isinstance(response, APIResponse) and response.error:
-                            logger.error(f"Failed to create exec_sql function: {response.error}")
-                            return False
-                        
-                        logger.info("Successfully created exec_sql function")
-                    except Exception as e:
-                        logger.error(f"Failed to create exec_sql function: {str(e)}")
-                        logger.error("You may need to manually create the SQL functions in the Supabase SQL Editor")
-                        return False
+            if response.status_code == 200:
+                logger.info("Successfully created exec_sql function")
+            elif response.status_code == 404:
+                # If exec_sql doesn't exist yet, we need to use a different approach
+                logger.info("exec_sql function doesn't exist yet, using direct SQL execution")
+                
+                # Use the Supabase SQL API to execute the SQL directly
+                # This is a more direct approach that doesn't rely on the exec_sql function
+                sql_url = supabase_url.replace("supabase.co", "supabase.co/rest/v1/sql")
+                
+                response = requests.post(
+                    sql_url,
+                    headers=headers,
+                    json={"query": exec_sql_function}
+                )
+                
+                if response.status_code >= 400:
+                    logger.error(f"Failed to create exec_sql function: {response.text}")
+                    return False
+                
+                logger.info("Successfully created exec_sql function using direct SQL execution")
+            else:
+                logger.error(f"Failed to create exec_sql function: {response.text}")
+                return False
+        except Exception as e:
+            logger.error(f"Error creating exec_sql function: {str(e)}")
+            return False
+        
+        # Now that exec_sql exists, use it to create the other functions
+        for i, sql in enumerate(SQL_FUNCTIONS):
+            # Skip the exec_sql function since we already created it
+            if i == 1:
+                continue
+                
+            logger.info(f"Creating SQL function {i+1}/{len(SQL_FUNCTIONS)}...")
+            
+            try:
+                # Use the exec_sql function to create the other functions
+                response = supabase.rpc('exec_sql', {'sql': sql}).execute()
+                
+                if hasattr(response, 'error') and response.error:
+                    logger.error(f"Error creating SQL function: {response.error}")
+                    return False
+            except Exception as e:
+                logger.error(f"Error creating SQL function: {str(e)}")
+                return False
         
         logger.info("All SQL functions created successfully")
         return True
@@ -117,12 +165,10 @@ def main():
     args = parser.parse_args()
     
     try:
-        # Create Supabase client
         logger.info(f"Connecting to Supabase at {args.url}")
-        supabase = create_client(args.url, args.key)
         
         # Create SQL functions
-        if create_sql_functions(supabase):
+        if create_sql_functions(args.url, args.key):
             logger.info("Database initialization completed successfully")
             return 0
         else:

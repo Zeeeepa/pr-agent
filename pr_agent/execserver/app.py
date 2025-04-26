@@ -155,6 +155,29 @@ async def startup_db_client():
         # Initialize database if credentials are available
         if supabase_url and supabase_anon_key:
             logger.info("Initializing database...")
+            
+            # Create a temporary database service to check for required SQL functions
+            from pr_agent.execserver.services.db_service import DatabaseService
+            db_service = DatabaseService()
+            
+            # Check if required SQL functions exist
+            functions_exist, missing_functions = await db_service.check_required_sql_functions()
+            
+            if not functions_exist:
+                # Get the path to the initdb.py script
+                initdb_path = await db_service.get_initdb_script_path()
+                
+                # Log a warning with instructions on how to fix the issue
+                logger.warning(f"Required SQL functions are missing: {', '.join(missing_functions)}")
+                logger.warning(f"Please run the database initialization script to create these functions:")
+                logger.warning(f"cd {os.path.dirname(initdb_path)}")
+                logger.warning(f"python initdb.py --url \"{supabase_url}\" --key \"{supabase_anon_key}\"")
+                logger.warning("Then restart the application.")
+                
+                # Continue with initialization, but it will likely fail
+                logger.warning("Attempting to initialize database anyway, but it may fail...")
+            
+            # Try to initialize the database
             success = await initialize_database(supabase_url, supabase_anon_key)
             if success:
                 logger.info("Database initialized successfully")

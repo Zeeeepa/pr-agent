@@ -1,10 +1,11 @@
 import os
 import uuid
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 import json
 import asyncio
+import pathlib
 
 from supabase import create_client, Client
 
@@ -17,6 +18,13 @@ from .migration_service import MigrationService
 
 # Set up logging
 logger = logging.getLogger(__name__)
+
+# Required SQL functions for database migrations
+REQUIRED_SQL_FUNCTIONS = [
+    "create_table_if_not_exists",
+    "exec_sql",
+    "drop_table_if_exists"
+]
 
 class DatabaseService:
     """
@@ -173,6 +181,62 @@ class DatabaseService:
             True if connection is successful, False otherwise
         """
         return self._connect_to_supabase(supabase_url, supabase_anon_key, "reconnect")
+    
+    async def check_required_sql_functions(self) -> Tuple[bool, List[str]]:
+        """
+        Check if the required SQL functions exist in the database
+        
+        Returns:
+            Tuple of (all_functions_exist, missing_functions)
+        """
+        if not self.supabase:
+            return False, REQUIRED_SQL_FUNCTIONS
+        
+        try:
+            # Query PostgreSQL's information schema to check for function existence
+            missing_functions = []
+            
+            for function_name in REQUIRED_SQL_FUNCTIONS:
+                # Use a direct query to check if the function exists
+                try:
+                    # This query checks if the function exists in the public schema
+                    query = f"""
+                    SELECT EXISTS (
+                        SELECT 1 
+                        FROM pg_proc p
+                        JOIN pg_namespace n ON p.pronamespace = n.oid
+                        WHERE n.nspname = 'public'
+                        AND p.proname = '{function_name}'
+                    )
+                    """
+                    # We can't use the function directly since it might not exist
+                    # So we use a raw SQL query via the REST API
+                    result = self.supabase.rpc('exec_sql', {'sql': query}).execute()
+                    
+                    # If we get here, exec_sql exists, but we need to check the result
+                    if not result.data or not result.data[0].get('exists', False):
+                        missing_functions.append(function_name)
+                except Exception:
+                    # If we get an error, it's likely because exec_sql doesn't exist
+                    missing_functions.append(function_name)
+            
+            all_functions_exist = len(missing_functions) == 0
+            return all_functions_exist, missing_functions
+        except Exception as e:
+            logger.error(f"Error checking required SQL functions: {str(e)}")
+            return False, REQUIRED_SQL_FUNCTIONS
+    
+    async def get_initdb_script_path(self) -> str:
+        """
+        Get the path to the initdb.py script
+        
+        Returns:
+            Path to the initdb.py script
+        """
+        # Get the path to the execserver directory
+        execserver_dir = pathlib.Path(__file__).parent.parent
+        initdb_path = execserver_dir / "initdb.py"
+        return str(initdb_path)
 
     # Event methods
     async def log_event(self, event_type: str, repository: str, payload: Dict[str, Any]) -> Event:
