@@ -21,6 +21,7 @@ from pr_agent.execserver.config import (
 )
 from pr_agent.execserver.services.settings_service import SettingsService
 from pr_agent.execserver.db import initialize_database
+from pr_agent.execserver.db.utils import create_required_sql_functions, create_tables_directly
 from pr_agent.log import setup_logger, LoggingFormat
 from pr_agent.error_handler import PRAgentError, handle_exceptions
 from pr_agent.log.enhanced_logging import RequestContext, structured_log
@@ -151,26 +152,64 @@ async def check_and_init_database(supabase_url: str, supabase_anon_key: str) -> 
         True if database initialization was successful, False otherwise
     """
     from pr_agent.execserver.services.db_service import DatabaseService
-    db_service = DatabaseService()
-    
-    # Check if required SQL functions exist
-    functions_exist, missing_functions = await db_service.check_required_sql_functions()
-    
-    if not functions_exist:
-        # Get the path to the initdb.py script
-        initdb_path = await db_service.get_initdb_script_path()
-        log_missing_functions_warning(missing_functions, initdb_path, supabase_url, supabase_anon_key)
+    from supabase import create_client
     
     try:
-        # Set a timeout for database initialization to prevent hanging
-        async with asyncio.timeout(30):  # 30 seconds timeout
-            success = await initialize_database(supabase_url, supabase_anon_key)
-            return success
-    except asyncio.TimeoutError:
-        logger.error("Database initialization timed out")
-        return False
+        # Create a direct Supabase client for initialization
+        supabase = create_client(supabase_url, supabase_anon_key)
+        
+        # First, try to create the required SQL functions if they don't exist
+        try:
+            # Check if we can use the exec_sql function
+            supabase.rpc("exec_sql", {"sql": "SELECT 1"}).execute()
+            logger.info("Required SQL functions already exist")
+        except Exception:
+            logger.warning("Required SQL functions don't exist, attempting to create them")
+            
+            # Try to create the required SQL functions
+            success, errors = await create_required_sql_functions(supabase)
+            
+            if success:
+                logger.info("Successfully created required SQL functions")
+            else:
+                logger.warning(f"Failed to create SQL functions: {errors}")
+                logger.warning("Will attempt to proceed with database initialization anyway")
+        
+        # Now initialize the database using the standard method
+        db_service = DatabaseService()
+        
+        # Check if required SQL functions exist
+        functions_exist, missing_functions = await db_service.check_required_sql_functions()
+        
+        if not functions_exist:
+            # Get the path to the initdb.py script
+            initdb_path = await db_service.get_initdb_script_path()
+            log_missing_functions_warning(missing_functions, initdb_path, supabase_url, supabase_anon_key)
+        
+        try:
+            # Set a timeout for database initialization to prevent hanging
+            async with asyncio.timeout(30):  # 30 seconds timeout
+                success = await initialize_database(supabase_url, supabase_anon_key)
+                
+                if not success:
+                    # If standard initialization fails, try direct table creation as a fallback
+                    logger.warning("Standard database initialization failed, attempting direct table creation")
+                    success, errors = await create_tables_directly(supabase)
+                    
+                    if success:
+                        logger.info("Successfully created tables directly")
+                    else:
+                        logger.error(f"Failed to create tables directly: {errors}")
+                
+                return success
+        except asyncio.TimeoutError:
+            logger.error("Database initialization timed out")
+            return False
+        except Exception as e:
+            logger.error(f"Database initialization failed: {str(e)}")
+            return False
     except Exception as e:
-        logger.error(f"Database initialization failed: {str(e)}")
+        logger.error(f"Error in check_and_init_database: {str(e)}")
         return False
 
 def log_missing_functions_warning(missing_functions: list, initdb_path: str, supabase_url: str, supabase_anon_key: str):
@@ -210,7 +249,7 @@ async def startup_db_client():
             if success:
                 logger.info("Database initialized successfully")
             else:
-                logger.error("Failed to initialize database")
+                logger.warning("Database initialization failed")
         else:
             logger.warning("Supabase credentials not found in environment variables")
             
