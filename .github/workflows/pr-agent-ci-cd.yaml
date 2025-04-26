@@ -1,0 +1,225 @@
+name: PR-Agent CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      deploy_to_production:
+        description: 'Deploy to production'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff pre-commit
+          pip install -e .
+
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files
+
+      - name: Run ruff linter
+        run: ruff check .
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build test Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: false
+          load: true
+          tags: codiumai/pr-agent:test
+          cache-from: type=gha,scope=dev
+          cache-to: type=gha,mode=max,scope=dev
+          target: test
+
+      - name: Run unit tests
+        run: docker run --rm codiumai/pr-agent:test pytest -v tests/unittest
+
+      - name: Run ExecServer tests
+        run: docker run --rm codiumai/pr-agent:test pytest -v tests/execserver
+
+      - name: Generate code coverage report
+        run: |
+          docker run --name test_container codiumai/pr-agent:test pytest tests/unittest tests/execserver --cov=pr_agent --cov-report term --cov-report xml:coverage.xml
+          docker cp test_container:/app/coverage.xml coverage.xml
+          docker rm test_container
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.xml
+          fail_ci_if_error: false
+
+  build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: zeeeepa/pr-agent
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,format=short
+
+      - name: Build and push GitHub App image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}-github-app
+          labels: ${{ steps.meta.outputs.labels }}
+          target: github_app
+          cache-from: type=gha,scope=prod
+          cache-to: type=gha,mode=max,scope=prod
+
+      - name: Build and push ExecServer image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}-execserver
+          labels: ${{ steps.meta.outputs.labels }}
+          target: github_app
+          build-args: |
+            ENTRYPOINT=["python", "-m", "pr_agent.execserver.app"]
+          cache-from: type=gha,scope=prod
+          cache-to: type=gha,mode=max,scope=prod
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Deploy to Kubernetes
+        run: |
+          # Update deployment manifests with the new image tag
+          IMAGE_TAG="${{ github.sha }}"
+          
+          # Deploy PR-Agent GitHub App
+          kubectl set image deployment/pr-agent-github-app pr-agent-github-app=zeeeepa/pr-agent:${IMAGE_TAG}-github-app -n staging
+          
+          # Deploy ExecServer
+          kubectl set image deployment/pr-agent-execserver pr-agent-execserver=zeeeepa/pr-agent:${IMAGE_TAG}-execserver -n staging
+          
+          # Wait for deployments to roll out
+          kubectl rollout status deployment/pr-agent-github-app -n staging
+          kubectl rollout status deployment/pr-agent-execserver -n staging
+
+      - name: Verify deployment
+        run: |
+          # Add health check verification
+          kubectl get pods -n staging -l app=pr-agent-github-app
+          kubectl get pods -n staging -l app=pr-agent-execserver
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_to_production == 'true'
+    environment:
+      name: production
+      url: https://pr-agent.example.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Deploy to Kubernetes
+        run: |
+          # Update deployment manifests with the new image tag
+          IMAGE_TAG="${{ github.sha }}"
+          
+          # Deploy PR-Agent GitHub App
+          kubectl set image deployment/pr-agent-github-app pr-agent-github-app=zeeeepa/pr-agent:${IMAGE_TAG}-github-app -n production
+          
+          # Deploy ExecServer
+          kubectl set image deployment/pr-agent-execserver pr-agent-execserver=zeeeepa/pr-agent:${IMAGE_TAG}-execserver -n production
+          
+          # Wait for deployments to roll out
+          kubectl rollout status deployment/pr-agent-github-app -n production
+          kubectl rollout status deployment/pr-agent-execserver -n production
+
+      - name: Verify deployment
+        run: |
+          # Add health check verification
+          kubectl get pods -n production -l app=pr-agent-github-app
+          kubectl get pods -n production -l app=pr-agent-execserver
