@@ -51,21 +51,27 @@ ExecServer is fully integrated with PR-Agent's existing components:
 
    This installs the package in editable mode, which means changes to the code will be reflected immediately without reinstalling.
 
-3. Install additional dependencies:
+3. Install dependencies:
    ```bash
-   pip install fastapi uvicorn supabase
+   pip install -r requirements.txt
    ```
 
-   For Windows users who want desktop notifications:
-   ```bash
-   pip install win10toast
-   ```
+   The requirements.txt file includes all necessary dependencies, including:
+   - FastAPI and Uvicorn for the web server
+   - Supabase client for database access
+   - Pydantic for data validation
+   - Other PR-Agent dependencies
 
 4. Set up environment variables:
    ```bash
    cp .env.example .env
    ```
-   Edit the `.env` file to add your GitHub token, Supabase URL, and Supabase anonymous key.
+   Edit the `.env` file to add your GitHub token, Supabase URL, and Supabase anonymous key:
+   ```
+   GITHUB_TOKEN=your_github_token
+   SUPABASE_URL=your_supabase_url
+   SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
 
 5. Run the server:
    ```bash
@@ -98,6 +104,40 @@ Solutions:
 - Make sure you're running the app from the project root directory
 - Install the package in development mode: `pip install -e .` from the project root
 - Add the project root to your PYTHONPATH: `export PYTHONPATH=$PYTHONPATH:/path/to/pr-agent`
+
+### Dependency Conflicts
+
+If you encounter dependency conflicts like:
+```
+ERROR: Cannot install -r requirements.txt (line 10), -r requirements.txt (line 13), -r requirements.txt (line 16) and pydantic==1.10.7 because these package versions have conflicting dependencies.
+```
+
+This is typically due to conflicts between FastAPI, Pydantic, and LiteLLM versions. The requirements.txt file has been updated to resolve these conflicts, but if you still encounter issues:
+
+1. Create a new virtual environment:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
+
+2. Install dependencies with specific versions:
+   ```bash
+   pip install fastapi==0.100.0 pydantic>=2.0.0,<3.0.0 litellm==0.14.0
+   pip install -r requirements.txt
+   ```
+
+### TypeScript ForwardRef Error
+
+If you encounter an error like:
+```
+TypeError: ForwardRef._evaluate() missing 1 required keyword-only argument: 'recursive_guard'
+```
+
+This is due to a compatibility issue between FastAPI and Pydantic versions. The solution is to:
+
+1. Ensure you're using FastAPI 0.100.0 or higher
+2. Ensure you're using Pydantic 2.x
+3. Reinstall the dependencies as mentioned above
 
 ### Other Common Issues
 

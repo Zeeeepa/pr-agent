@@ -69,6 +69,10 @@ def get_config(key, default=None):
     return value
 
 
+# Export Supabase configuration directly for imports
+SUPABASE_URL = get_config("SUPABASE_URL")
+SUPABASE_ANON_KEY = get_config("SUPABASE_ANON_KEY")
+
 # GitHub configuration
 def get_github_token():
     """Get GitHub token with proper error handling."""

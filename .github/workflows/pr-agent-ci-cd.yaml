@@ -1,0 +1,192 @@
+name: PR-Agent CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      deploy_production:
+        description: 'Deploy to production'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 black isort
+          pip install -r requirements.txt
+      - name: Lint with flake8
+        run: |
+          flake8 pr_agent --count --select=E9,F63,F7,F82 --show-source --statistics
+      - name: Check formatting with black
+        run: |
+          black --check pr_agent
+      - name: Check imports with isort
+        run: |
+          isort --check-only --profile black pr_agent
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+      - name: Test with pytest
+        run: |
+          pytest tests/ --cov=pr_agent
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+  test-execserver:
+    name: Test ExecServer
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+      - name: Test ExecServer
+        run: |
+          pytest tests/execserver/test_execserver.py --cov=pr_agent.execserver
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+  build-github-app:
+    name: Build GitHub App Docker Image
+    runs-on: ubuntu-latest
+    needs: [test, test-execserver]
+    if: github.event_name == 'push' || github.event.inputs.deploy_production == 'true'
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push GitHub App
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/pr-agent:${{ github.sha }},${{ secrets.DOCKERHUB_USERNAME }}/pr-agent:latest
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/pr-agent:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/pr-agent:buildcache,mode=max
+
+  build-execserver:
+    name: Build ExecServer Docker Image
+    runs-on: ubuntu-latest
+    needs: [test, test-execserver]
+    if: github.event_name == 'push' || github.event.inputs.deploy_production == 'true'
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push ExecServer
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile.execserver
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/pr-agent-execserver:${{ github.sha }},${{ secrets.DOCKERHUB_USERNAME }}/pr-agent-execserver:latest
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/pr-agent-execserver:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/pr-agent-execserver:buildcache,mode=max
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-github-app, build-execserver]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+      - name: Set Kubernetes context
+        uses: azure/k8s-set-context@v3
+        with:
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+      - name: Deploy to Kubernetes
+        run: |
+          # Update image tags in deployment files
+          sed -i "s|image: .*pr-agent:.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/pr-agent:${{ github.sha }}|g" kubernetes/github-app-deployment.yaml
+          sed -i "s|image: .*pr-agent-execserver:.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/pr-agent-execserver:${{ github.sha }}|g" kubernetes/execserver-deployment.yaml
+          
+          # Apply Kubernetes manifests
+          kubectl apply -f kubernetes/github-app-deployment.yaml
+          kubectl apply -f kubernetes/execserver-deployment.yaml
+          
+          # Wait for deployments to be ready
+          kubectl rollout status deployment/pr-agent-github-app -n pr-agent
+          kubectl rollout status deployment/pr-agent-execserver -n pr-agent
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-github-app, build-execserver]
+    if: github.event.inputs.deploy_production == 'true'
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+      - name: Set Kubernetes context
+        uses: azure/k8s-set-context@v3
+        with:
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+      - name: Deploy to Kubernetes
+        run: |
+          # Update image tags in deployment files
+          sed -i "s|image: .*pr-agent:.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/pr-agent:${{ github.sha }}|g" kubernetes/github-app-deployment.yaml
+          sed -i "s|image: .*pr-agent-execserver:.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/pr-agent-execserver:${{ github.sha }}|g" kubernetes/execserver-deployment.yaml
+          
+          # Apply Kubernetes manifests
+          kubectl apply -f kubernetes/github-app-deployment.yaml
+          kubectl apply -f kubernetes/execserver-deployment.yaml
+          
+          # Wait for deployments to be ready
+          kubectl rollout status deployment/pr-agent-github-app -n pr-agent
+          kubectl rollout status deployment/pr-agent-execserver -n pr-agent
