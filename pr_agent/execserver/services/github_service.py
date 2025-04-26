@@ -27,25 +27,33 @@ class GitHubService:
         self.pr_agent_github_provider = None
         
         # Initialize PyGithub client
-        github_app_id = get_github_app_id()
-        github_app_private_key = get_github_app_private_key()
-        github_app_installation_id = get_github_app_installation_id()
-        github_token = get_github_token()
-        
-        if github_app_id and github_app_private_key and github_app_installation_id:
-            # Use GitHub App authentication (PyGithub 1.58.1 compatible)
-            integration = GithubIntegration(
-                github_app_id,
-                github_app_private_key
-            )
-            # Get an access token for the installation
-            access_token = integration.get_access_token(github_app_installation_id).token
-            self.github = Github(access_token)
-        elif github_token:
-            # Use personal access token
-            self.github = Github(github_token)
-        else:
-            raise ValueError("GitHub authentication credentials not provided")
+        try:
+            github_app_id = get_github_app_id()
+            github_app_private_key = get_github_app_private_key()
+            github_app_installation_id = get_github_app_installation_id()
+            github_token = get_github_token()
+            
+            if github_app_id and github_app_private_key and github_app_installation_id:
+                # Use GitHub App authentication (PyGithub 1.58.1 compatible)
+                integration = GithubIntegration(
+                    github_app_id,
+                    github_app_private_key
+                )
+                # Get an access token for the installation
+                access_token = integration.get_access_token(github_app_installation_id).token
+                self.github = Github(access_token)
+            elif github_token:
+                # Use personal access token
+                self.github = Github(github_token)
+            else:
+                raise ValueError("GitHub authentication credentials not provided")
+        except Exception as e:
+            # Fallback to token-based authentication if app authentication fails
+            github_token = get_github_token()
+            if github_token:
+                self.github = Github(github_token)
+            else:
+                raise ValueError("GitHub authentication credentials not provided")
     
     def get_pr_agent_github_provider(self, pr_url: Optional[str] = None) -> GithubProvider:
         """
