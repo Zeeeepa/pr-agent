@@ -13,10 +13,15 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 
 from pr_agent.execserver.api.routes import router as api_router
-from pr_agent.execserver.config import get_cors_origins, get_log_level, get_log_format
+from pr_agent.execserver.config import get_cors_origins, get_log_level, get_log_format, set_settings_service
+from pr_agent.execserver.services.settings_service import SettingsService
 from pr_agent.log import setup_logger, LoggingFormat
 from pr_agent.error_handler import PRAgentError, handle_exceptions
 from pr_agent.log.enhanced_logging import RequestContext, structured_log
+
+# Initialize settings service
+settings_service = SettingsService()
+set_settings_service(settings_service)
 
 # Setup logging
 log_level = get_log_level()
@@ -114,7 +119,7 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 # Include API routes
-app.include_router(api_router, prefix="/api")
+app.include_router(api_router)
 
 # Mount static files for UI
 static_dir = Path(__file__).parent / "ui" / "static"

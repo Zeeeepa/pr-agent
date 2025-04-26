@@ -41,6 +41,14 @@ CONFIG_DEFAULTS = {
     "LOG_FORMAT": "CONSOLE",
 }
 
+# Global settings service instance
+_settings_service = None
+
+def set_settings_service(settings_service):
+    """Set the global settings service instance"""
+    global _settings_service
+    _settings_service = settings_service
+
 
 def get_config(key, default=None):
     """
@@ -56,6 +64,13 @@ def get_config(key, default=None):
     Raises:
         ConfigurationError: If the key is required but not found
     """
+    # Check settings service first if available
+    global _settings_service
+    if _settings_service:
+        value = _settings_service.get_setting(key)
+        if value is not None:
+            return value
+    
     # Use the default from CONFIG_DEFAULTS if provided
     if default is None and key in CONFIG_DEFAULTS:
         default = CONFIG_DEFAULTS[key]
@@ -72,7 +87,7 @@ def get_config(key, default=None):
     
     # Raise error if value is required but not found
     # GitHub App ID, Private Key, and Installation ID are optional
-    if value is None and default is None and key not in ["GITHUB_APP_ID", "GITHUB_APP_PRIVATE_KEY", "GITHUB_APP_INSTALLATION_ID"]:
+    if value is None and default is None and key not in ["GITHUB_APP_ID", "GITHUB_APP_PRIVATE_KEY", "GITHUB_APP_INSTALLATION_ID", "SUPABASE_URL", "SUPABASE_ANON_KEY"]:
         raise ConfigurationError(f"Required configuration '{key}' not found")
         
     return value
