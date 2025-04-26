@@ -10,7 +10,7 @@ from ..models.event import Event
 from ..models.project import Project
 from ..models.trigger import Trigger
 from ..models.workflow import Workflow, WorkflowRun
-from ..config import SUPABASE_URL, SUPABASE_ANON_KEY
+from ..config import get_supabase_url, get_supabase_anon_key
 
 
 class DatabaseService:
@@ -19,7 +19,7 @@ class DatabaseService:
     """
     def __init__(self):
         """Initialize the database service"""
-        self.supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+        self.supabase: Client = create_client(get_supabase_url(), get_supabase_anon_key())
         
     # Event methods
     async def log_event(self, event_type: str, repository: str, payload: Dict[str, Any]) -> Event:
