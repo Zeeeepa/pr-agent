@@ -1,6 +1,6 @@
 ## Overview
 
-The `improve` tool scans the PR code changes, and automatically generates [meaningful](https://github.com/Codium-ai/pr-agent/blob/main/pr_agent/settings/pr_code_suggestions_prompts.toml#L41) suggestions for improving the PR code.
+The `improve` tool scans the PR code changes, and automatically generates meaningful suggestions for improving the PR code.
 The tool can be triggered automatically every time a new PR is [opened](../usage-guide/automations_and_usage.md#github-app-automatic-tools-when-a-new-pr-is-opened), or it can be invoked manually by commenting on any PR:
 
 ```toml
@@ -21,7 +21,7 @@ The tool can be triggered automatically every time a new PR is [opened](../usage
 
 Invoke the tool manually by commenting `/improve` on any PR. The code suggestions by default are presented as a single comment:
 
-To edit [configurations](#configuration-options) related to the improve tool, use the following template:
+To edit [configurations](#configuration-options) related to the `improve` tool, use the following template:
 
 ```toml
 /improve --pr_code_suggestions.some_config1=... --pr_code_suggestions.some_config2=...
@@ -267,14 +267,35 @@ In such cases, we recommend prioritizing the suggestion's detailed description, 
 
 > `💎 feature` Platforms supported: GitHub, GitLab
 
-If you set the following in your configuration file:
+Qodo Merge implements an orchestrator agent that enables interactive code discussions, listening and responding to comments without requiring explicit tool calls.
+The orchestrator intelligently analyzes your responses to determine if you want to implement a suggestion, ask a question, or request help, then delegates to the appropriate specialized tool.
+
+#### How it works
+
+Enable interactive code discussions by adding the following to your configuration file (default is `True`):
 
 ```toml
 [pr_code_suggestions]
 enable_chat_in_code_suggestions = true
 ```
 
-The Qodo Merge bot will automatically listen and respond to comments within code suggestion discussions that it has initiated, without requiring explicit tool calls.
+!!! info "Activating Dynamic Responses"
+    To obtain dynamic responses, the following steps are required:
+
+    1. Run the `/improve` command (mostly automatic)
+    2. Tick the `/improve` recommendation checkboxes (_Apply this suggestion_) to have Qodo Merge generate a new inline code suggestion discussion
+    3. The orchestrator agent will then automatically listen and reply to comments within the discussion without requiring additional commands
+
+#### Explore the available interaction patterns:
+
+=== "Asking for Details"
+    ![Chat on code suggestions ask](https://codium.ai/images/pr_agent/improve_chat_on_code_suggestions_ask.png){width=512}
+
+=== "Implementing Suggestions"
+    ![Chat on code suggestions implement](https://codium.ai/images/pr_agent/improve_chat_on_code_suggestions_implement.png){width=512}
+
+=== "Providing Additional Help"
+    ![Chat on code suggestions help](https://codium.ai/images/pr_agent/improve_chat_on_code_suggestions_help.png){width=512}
 
 
 ### Dual publishing mode
@@ -416,18 +437,18 @@ Qodo Merge uses a dynamic strategy to generate code suggestions based on the siz
 #### 1. Chunking large PRs
 
 - Qodo Merge divides large PRs into 'chunks'.
-- Each chunk contains up to `pr_code_suggestions.max_context_tokens` tokens (default: 14,000).
+- Each chunk contains up to `pr_code_suggestions.max_context_tokens` tokens (default: 24,000).
 
 #### 2. Generating suggestions
 
-- For each chunk, Qodo Merge generates up to `pr_code_suggestions.num_code_suggestions_per_chunk` suggestions (default: 3).
+- For each chunk, Qodo Merge generates up to `pr_code_suggestions.num_code_suggestions_per_chunk` suggestions (default: 4).
 
 This approach has two main benefits:
 
 - Scalability: The number of suggestions scales with the PR size, rather than being fixed.
 - Quality: By processing smaller chunks, the AI can maintain higher quality suggestions, as larger contexts tend to decrease AI performance.
 
-Note: Chunking is primarily relevant for large PRs. For most PRs (up to 500 lines of code), Qodo Merge will be able to process the entire code in a single call.
+Note: Chunking is primarily relevant for large PRs. For most PRs (up to 600 lines of code), Qodo Merge will be able to process the entire code in a single call.
 
 ## Configuration options
 
@@ -516,4 +537,5 @@ Note: Chunking is primarily relevant for large PRs. For most PRs (up to 500 line
     - **Bug detection:** The suggestions also alert on any _critical bugs_ that may have been identified during the analysis. This provides an additional safety net to catch potential issues before they make it into production. It's perfectly acceptable to implement only the suggestions you find valuable for your specific context.
 - **Hierarchy:** Presenting the suggestions in a structured hierarchical table enables the user to _quickly_ understand them, and to decide which ones are relevant and which are not.
 - **Customization:** To guide the model to suggestions that are more relevant to the specific needs of your project, we recommend to use the [`extra_instructions`](https://qodo-merge-docs.qodo.ai/tools/improve/#extra-instructions-and-best-practices) and [`best practices`](https://qodo-merge-docs.qodo.ai/tools/improve/#best-practices) fields.
+- **Model Selection:** SaaS users can also [choose](https://qodo-merge-docs.qodo.ai/usage-guide/qodo_merge_models/) between different models. For specific programming languages or use cases, some models may perform better than others.
 - **Interactive usage:** The interactive [PR chat](https://qodo-merge-docs.qodo.ai/chrome-extension/) also provides an easy way to get more tailored suggestions and feedback from the AI model.

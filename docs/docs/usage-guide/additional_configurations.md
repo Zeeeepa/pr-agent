@@ -72,7 +72,7 @@ Example:
 
 ```toml
 [config]
-response_language: "it-IT"
+response_language = "it-IT"
 ```
 
 This will set the response language globally for all the commands to Italian.
