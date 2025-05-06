@@ -71,13 +71,21 @@ jobs:
 
       - name: Test UI endpoints
         run: |
-          # Test that the UI is serving correctly
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/)
+          # Test that the UI is serving correctly from /ui path
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/ui/)
           if [ $HTTP_STATUS -ne 200 ]; then
             echo "UI endpoint returned HTTP status $HTTP_STATUS, expected 200"
             exit 1
           fi
           echo "UI endpoint is working correctly"
+          
+          # Test root redirect to UI
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L http://localhost:8000/)
+          if [ $HTTP_STATUS -ne 200 ]; then
+            echo "Root redirect to UI returned HTTP status $HTTP_STATUS, expected 200"
+            exit 1
+          fi
+          echo "Root redirect to UI is working correctly"
           
           # Test API endpoints
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/v1/events)
@@ -166,13 +174,21 @@ jobs:
 
       - name: Test UI in Docker
         run: |
-          # Test that the UI is serving correctly
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/)
+          # Test that the UI is serving correctly from /ui path
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/ui/)
           if [ $HTTP_STATUS -ne 200 ]; then
             echo "UI endpoint returned HTTP status $HTTP_STATUS, expected 200"
             exit 1
           fi
           echo "UI endpoint is working correctly"
+          
+          # Test root redirect to UI
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L http://localhost:8000/)
+          if [ $HTTP_STATUS -ne 200 ]; then
+            echo "Root redirect to UI returned HTTP status $HTTP_STATUS, expected 200"
+            exit 1
+          fi
+          echo "Root redirect to UI is working correctly"
           
           # Test API endpoints
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/v1/events)

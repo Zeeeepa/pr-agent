@@ -29,6 +29,20 @@ class TestExeServer(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"status": "healthy"})
 
+    def test_root_redirect(self):
+        """Test the root redirect to UI"""
+        response = self.client.get("/", allow_redirects=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["location"], "/ui")
+
+    def test_ui_static_files(self):
+        """Test that the UI static files are being served"""
+        # This test will fail if the static files don't exist
+        # We're just checking that the route is registered correctly
+        with patch('fastapi.staticfiles.StaticFiles.__call__', return_value=MagicMock(status_code=200)):
+            response = self.client.get("/ui/")
+            self.assertEqual(response.status_code, 200)
+
     @patch('pr_agent.execserver.api.routes.event_service')
     @patch('pr_agent.execserver.api.routes.pr_agent_handle_github_webhooks')
     def test_github_webhooks(self, mock_pr_agent_handler, mock_event_service):
