@@ -1,0 +1,71 @@
+/* Dark theme styles */
+:root {
+  --primary-color: #63b3ed;
+  --secondary-color: #a0aec0;
+  --background-color: #1a202c;
+  --text-color: #f7fafc;
+  --border-color: #2d3748;
+  --hover-color: #2d3748;
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+.app-header {
+  background-color: #2d3748;
+  color: #f8f9fa;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.theme-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.tab:hover {
+  background-color: var(--hover-color);
+}
+
+.tab.active {
+  background-color: var(--primary-color);
+}
+
+.data-table th {
+  background-color: var(--hover-color);
+}
+
+.data-table tbody tr:hover {
+  background-color: var(--hover-color);
+}
+
+.loading-spinner {
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--primary-color);
+}
+
+/* Dark theme specific adjustments */
+.stat-card {
+  background-color: #2d3748;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.settings-group {
+  background-color: #2d3748;
+}
+
+/* Form elements in dark mode */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+select,
+textarea {
+  background-color: #4a5568;
+  border: 1px solid #2d3748;
+  color: #f7fafc;
+}
+
+input[type="checkbox"] {
+  accent-color: var(--primary-color);
+}
+

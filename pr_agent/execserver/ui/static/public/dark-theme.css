@@ -1,0 +1,233 @@
+/**
+ * PR-Agent Dashboard Dark Theme
+ * 
+ * This file contains the dark theme styles for the PR-Agent dashboard.
+ * It defines color variables and specific overrides for dark mode.
+ */
+
+/* Dark Theme Variables */
+[data-theme="dark"] {
+    /* Base Colors */
+    --bg-color: #121212;
+    --text-color: #e0e0e0;
+    --muted-text-color: #a0a0a0;
+    
+    /* Component Colors */
+    --card-bg: #1e1e1e;
+    --card-header-bg: #252525;
+    --border-color: #333333;
+    --input-bg: #2a2a2a;
+    --input-border: #444444;
+    
+    /* Chat Colors */
+    --chat-ai-bg: #252525;
+    --chat-user-bg: #2a2a2a;
+    
+    /* Status Colors */
+    --status-active-color: #4caf50;
+    --status-inactive-color: #f44336;
+    --status-pending-color: #ff9800;
+    
+    /* Semantic Colors */
+    --primary-color: #4f8eff;
+    --primary-hover: #3a7aff;
+    --success-color: #4caf50;
+    --success-hover: #43a047;
+    --danger-color: #f44336;
+    --danger-hover: #e53935;
+    --warning-color: #ff9800;
+    --warning-hover: #fb8c00;
+    --info-color: #03a9f4;
+    --info-hover: #039be5;
+    --secondary-color: #757575;
+    --secondary-hover: #616161;
+    
+    /* Notification Colors */
+    --notification-unread-bg: #252525;
+    --notification-hover-bg: #2a2a2a;
+    
+    /* Shadow Colors */
+    --shadow-color: rgba(0, 0, 0, 0.5);
+    --shadow-color-light: rgba(0, 0, 0, 0.3);
+}
+
+/* Dark Theme Specific Styles */
+[data-theme="dark"] body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+/* Card Styles */
+[data-theme="dark"] .card {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .card-header {
+    background-color: var(--card-header-bg);
+    border-bottom-color: var(--border-color);
+}
+
+/* Button Styles */
+[data-theme="dark"] .btn-outline-secondary {
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .btn-outline-secondary:hover {
+    background-color: var(--secondary-color);
+    color: var(--bg-color);
+}
+
+/* Tab Navigation */
+[data-theme="dark"] .nav-tabs {
+    border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .nav-tabs .nav-link {
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .nav-tabs .nav-link:hover:not(.active) {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .nav-tabs .nav-link.active {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    border-color: var(--border-color);
+    border-bottom-color: var(--card-bg);
+}
+
+/* Table Styles */
+[data-theme="dark"] .table {
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .table th {
+    background-color: var(--card-header-bg);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .table td {
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .table-hover tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Form Controls */
+[data-theme="dark"] .form-control {
+    background-color: var(--input-bg);
+    border-color: var(--input-border);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .form-control:focus {
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(79, 142, 255, 0.25);
+}
+
+[data-theme="dark"] .form-control::placeholder {
+    color: var(--muted-text-color);
+}
+
+/* Status Indicators */
+[data-theme="dark"] .status-active {
+    color: var(--status-active-color);
+}
+
+[data-theme="dark"] .status-inactive {
+    color: var(--status-inactive-color);
+}
+
+[data-theme="dark"] .status-pending {
+    color: var(--status-pending-color);
+}
+
+/* Notification Panel */
+[data-theme="dark"] .notification-panel {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+[data-theme="dark"] .notification-header {
+    background-color: var(--card-header-bg);
+    border-bottom: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .notification-item {
+    border-bottom: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .notification-item:hover {
+    background-color: var(--notification-hover-bg);
+}
+
+[data-theme="dark"] .notification-item.unread {
+    background-color: var(--notification-unread-bg);
+}
+
+/* Modal Styles */
+[data-theme="dark"] .modal-content {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .modal-header {
+    background-color: var(--card-header-bg);
+    border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .modal-footer {
+    border-top-color: var(--border-color);
+}
+
+/* Alert Styles */
+[data-theme="dark"] .alert-success {
+    background-color: rgba(76, 175, 80, 0.1);
+    border-color: rgba(76, 175, 80, 0.2);
+    color: var(--success-color);
+}
+
+[data-theme="dark"] .alert-danger {
+    background-color: rgba(244, 67, 54, 0.1);
+    border-color: rgba(244, 67, 54, 0.2);
+    color: var(--danger-color);
+}
+
+[data-theme="dark"] .alert-warning {
+    background-color: rgba(255, 152, 0, 0.1);
+    border-color: rgba(255, 152, 0, 0.2);
+    color: var(--warning-color);
+}
+
+[data-theme="dark"] .alert-info {
+    background-color: rgba(3, 169, 244, 0.1);
+    border-color: rgba(3, 169, 244, 0.2);
+    color: var(--info-color);
+}
+
+/* Scrollbar Styles */
+[data-theme="dark"] ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+    background: var(--card-bg);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 4px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--secondary-color);
+}
+
