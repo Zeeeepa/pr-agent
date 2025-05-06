@@ -1,0 +1,26 @@
+# Configuration for the asynchronous webhook processor
+
+# Number of worker tasks to run concurrently
+NUM_WORKERS: 5
+
+# Maximum number of retry attempts for failed webhook processing
+MAX_RETRY_ATTEMPTS: 3
+
+# Maximum age (in seconds) of completed/failed webhook tasks to keep before cleanup (default: 24 hours)
+CLEANUP_AGE: 86400
+
+# Enable persistence of webhook tasks across application restarts
+ENABLE_PERSISTENCE: true
+
+# File path for persisting webhook tasks (relative to application root)
+PERSISTENCE_FILE: "data/webhook_tasks.json"
+
+# Interval (in seconds) for persisting webhook tasks to disk
+PERSISTENCE_INTERVAL: 300
+
+# Maximum number of webhook tasks to keep in memory
+MAX_TASKS: 1000
+
+# Enable detailed logging of webhook processing
+DETAILED_LOGGING: true
+
