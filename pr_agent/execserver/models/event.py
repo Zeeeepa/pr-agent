@@ -1,5 +1,6 @@
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -14,7 +15,7 @@ class Event(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Event creation timestamp")
     processed: bool = Field(default=False, description="Whether the event has been processed")
     processed_at: Optional[datetime] = Field(default=None, description="When the event was processed")
-    
+
     class Config:
         schema_extra = {
             "example": {

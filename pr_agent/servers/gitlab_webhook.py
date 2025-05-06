@@ -88,7 +88,7 @@ def is_draft_ready(data) -> bool:
         if 'draft' in data.get('changes', {}):
             if data['changes']['draft']['previous'] == 'true' and data['changes']['draft']['current'] == 'false':
                 return True
-            
+
         # for gitlab server version before 16
         elif 'title' in data.get('changes', {}):
             if 'Draft:' in data['changes']['title']['previous'] and 'Draft:' not in data['changes']['title']['current']:
@@ -225,7 +225,7 @@ async def gitlab_webhook(background_tasks: BackgroundTasks, request: Request):
 
                 get_logger().debug(f'A push event has been received: {url}')
                 await _perform_commands_gitlab("push_commands", PRAgent(), url, log_context, data)
-                
+
             # for draft to ready triggered merge requests
             elif object_attributes.get('action') == 'update' and is_draft_ready(data):
                 url = object_attributes.get('url')

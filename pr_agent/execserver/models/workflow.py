@@ -1,7 +1,8 @@
-from typing import Dict, Any, Optional, List
 from datetime import datetime
-from pydantic import BaseModel, Field
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
 
 
 class WorkflowStatus(str, Enum):
@@ -42,7 +43,7 @@ class Workflow(BaseModel):
     trigger: WorkflowTrigger = Field(..., description="Trigger type for the workflow")
     html_url: str = Field(..., description="URL to the workflow on GitHub")
     api_url: str = Field(..., description="GitHub API URL for the workflow")
-    
+
     class Config:
         schema_extra = {
             "example": {
@@ -72,7 +73,7 @@ class WorkflowRun(BaseModel):
     updated_at: datetime = Field(..., description="When the workflow run was last updated")
     html_url: str = Field(..., description="URL to the workflow run on GitHub")
     api_url: str = Field(..., description="GitHub API URL for the workflow run")
-    
+
     class Config:
         schema_extra = {
             "example": {

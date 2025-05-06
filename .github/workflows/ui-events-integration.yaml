@@ -65,7 +65,7 @@ jobs:
           python -m pr_agent.execserver.app &
           SERVER_PID=$!
           echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
-          
+
           # Wait for server to start
           sleep 5
 
@@ -78,7 +78,7 @@ jobs:
             exit 1
           fi
           echo "UI endpoint is working correctly"
-          
+
           # Test API endpoints
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/v1/events)
           if [ $HTTP_STATUS -ne 200 ]; then
@@ -104,15 +104,15 @@ jobs:
             }
           }
           EOF
-          
+
           # Send the event to the webhook endpoint
           curl -X POST -H "Content-Type: application/json" -H "X-GitHub-Event: pull_request" -d @test_event.json http://localhost:8000/api/v1/github_webhooks
-          
+
           # Check that the event was processed
           sleep 2
           EVENTS_JSON=$(curl -s http://localhost:8000/api/v1/events)
           echo "Events response: $EVENTS_JSON"
-          
+
           # Simple check to see if the response contains our test event
           if [[ $EVENTS_JSON == *"Test PR"* ]]; then
             echo "Event was successfully processed"
@@ -153,10 +153,10 @@ jobs:
       - name: Run Docker container
         run: |
           docker run -d -p 8000:8000 --name pr-agent-ui codiumai/pr-agent:ui-test
-          
+
           # Wait for container to start
           sleep 5
-          
+
           # Check if container is running
           if [ "$(docker inspect -f {{.State.Running}} pr-agent-ui)" != "true" ]; then
             echo "Container failed to start"
@@ -173,7 +173,7 @@ jobs:
             exit 1
           fi
           echo "UI endpoint is working correctly"
-          
+
           # Test API endpoints
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/v1/events)
           if [ $HTTP_STATUS -ne 200 ]; then

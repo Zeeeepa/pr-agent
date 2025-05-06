@@ -1,8 +1,8 @@
+import os
+from functools import lru_cache
 from os.path import abspath, dirname, join
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
-import os
-from functools import lru_cache
 
 from dynaconf import Dynaconf
 from starlette_context import context
@@ -88,33 +88,33 @@ if pyproject_path is not None:
 class ConfigManager:
     """
     Centralized configuration management system for PR-Agent.
-    
+
     This class provides a unified interface for accessing configuration settings
     from various sources with a clear precedence order:
     1. Environment variables
     2. Local configuration files (.pr_agent.toml)
     3. Global configuration files (settings/*.toml)
     4. Default values
-    
+
     Usage:
         config = ConfigManager()
         github_token = config.get("GITHUB_TOKEN")
         debug_mode = config.get("DEBUG", False)
     """
-    
+
     def __init__(self):
         """Initialize the configuration manager."""
         self._settings = get_settings()
-        
+
     @lru_cache(maxsize=128)
     def get(self, key: str, default: Any = None) -> Any:
         """
         Get a configuration value with proper precedence.
-        
+
         Args:
             key: The configuration key to look up
             default: Default value if the key is not found
-            
+
         Returns:
             The configuration value or the default
         """
@@ -122,20 +122,20 @@ class ConfigManager:
         env_value = os.getenv(key)
         if env_value is not None:
             return self._convert_value(env_value)
-            
+
         # Then check settings from configuration files
         try:
             return self._settings.get(key, default)
         except Exception:
             return default
-    
+
     def _convert_value(self, value: str) -> Union[str, int, float, bool]:
         """
         Convert string values to appropriate types.
-        
+
         Args:
             value: The string value to convert
-            
+
         Returns:
             The converted value
         """
@@ -144,7 +144,7 @@ class ConfigManager:
             return True
         if value.lower() in ('false', 'no', '0'):
             return False
-            
+
         # Try to convert to number
         try:
             if '.' in value:
@@ -153,24 +153,24 @@ class ConfigManager:
         except ValueError:
             # Return as string if not a number
             return value
-            
+
     def get_dict(self, prefix: str) -> Dict[str, Any]:
         """
         Get all configuration values with a specific prefix.
-        
+
         Args:
             prefix: The prefix to filter configuration keys
-            
+
         Returns:
             Dictionary of configuration values
         """
         result = {}
-        
+
         # Get from environment variables
         for key, value in os.environ.items():
             if key.startswith(prefix):
                 result[key] = self._convert_value(value)
-                
+
         # Get from settings
         try:
             settings_dict = self._settings.as_dict()
@@ -179,19 +179,19 @@ class ConfigManager:
                     result[key] = value
         except Exception:
             pass
-            
+
         return result
-        
+
     def set(self, key: str, value: Any) -> None:
         """
         Set a configuration value at runtime.
-        
+
         Args:
             key: The configuration key
             value: The value to set
         """
         self._settings.set(key, value)
-        
+
         # Clear the cache when setting a new value
         self.get.cache_clear()
 

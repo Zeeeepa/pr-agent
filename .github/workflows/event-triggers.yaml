@@ -75,7 +75,7 @@ jobs:
         run: |
           mkdir -p test_events
           EVENT_TYPE="${{ github.event.inputs.test_event }}"
-          
+
           if [ "$EVENT_TYPE" == "pull_request" ]; then
             cat > test_events/test_event.json << EOF
           {
@@ -133,23 +133,23 @@ jobs:
           from pr_agent.execserver.services.github_service import GitHubService
           from pr_agent.execserver.services.workflow_service import WorkflowService
           from pr_agent.execserver.services.event_service import EventService
-          
+
           async def test_event():
               db_service = DatabaseService()
               github_service = GitHubService()
               workflow_service = WorkflowService()
               event_service = EventService(db_service, github_service, workflow_service)
-              
+
               with open('test_events/test_event.json', 'r') as f:
                   payload = json.load(f)
-              
+
               event_type = '${{ github.event.inputs.test_event }}'
               success, error = await event_service.process_webhook(event_type, payload)
-              
+
               print(f'Event processing result: {success}')
               if error:
                   print(f'Error: {error}')
-          
+
           asyncio.run(test_event())
           "
 
@@ -178,12 +178,12 @@ jobs:
           # Start the server in the background
           python -m pr_agent.execserver.app &
           SERVER_PID=$!
-          
+
           # Wait for server to start
           sleep 5
-          
+
           # Run integration tests
           pytest -xvs tests/execserver/test_api_integration.py
-          
+
           # Kill the server
           kill $SERVER_PID

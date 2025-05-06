@@ -73,3 +73,5 @@ These tests cover:
 - Token management
 - Formatting of outputs
 
+-e
+

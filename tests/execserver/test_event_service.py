@@ -1,15 +1,19 @@
-import pytest
 import asyncio
 import json
+from typing import Any, Dict
 from unittest.mock import MagicMock, patch
-from typing import Dict, Any
 
+import pytest
+
+from pr_agent.execserver.models.event import Event
+from pr_agent.execserver.models.trigger import (EventType, Trigger,
+                                                TriggerAction,
+                                                TriggerCondition, TriggerType)
 from pr_agent.execserver.services.db_service import DatabaseService
+from pr_agent.execserver.services.event_service import EventService
 from pr_agent.execserver.services.github_service import GitHubService
 from pr_agent.execserver.services.workflow_service import WorkflowService
-from pr_agent.execserver.services.event_service import EventService
-from pr_agent.execserver.models.event import Event
-from pr_agent.execserver.models.trigger import Trigger, TriggerCondition, TriggerAction, EventType, TriggerType
+
 
 @pytest.fixture
 def event_service():
@@ -17,7 +21,7 @@ def event_service():
     db_service = MagicMock(spec=DatabaseService)
     github_service = MagicMock(spec=GitHubService)
     workflow_service = MagicMock(spec=WorkflowService)
-    
+
     return EventService(db_service, github_service, workflow_service)
 
 @pytest.mark.asyncio
@@ -39,10 +43,10 @@ async def test_process_webhook(event_service):
         processed=False,
         processed_at=None
     )
-    
+
     # Mock the process_event method
     event_service.process_event = MagicMock()
-    
+
     # Process a webhook
     event_type = "pull_request"
     payload = {
@@ -56,9 +60,9 @@ async def test_process_webhook(event_service):
             "full_name": "test/repo"
         }
     }
-    
+
     success, error = await event_service.process_webhook(event_type, payload)
-    
+
     # Verify the event was logged and processed
     assert success is True
     assert error is None
@@ -87,7 +91,7 @@ async def test_execute_trigger_actions(event_service):
         ],
         enabled=True
     )
-    
+
     # Create a test event
     event = Event(
         id="test-event-id",
@@ -104,10 +108,10 @@ async def test_execute_trigger_actions(event_service):
         processed=False,
         processed_at=None
     )
-    
+
     # Execute the trigger actions
     await event_service.execute_trigger_actions(trigger, event)
-    
+
     # Verify the PR comment action was executed
     event_service.github_service.comment_on_pr.assert_called_once_with(
         "test", "repo", 1, "Thank you for your contribution!"
