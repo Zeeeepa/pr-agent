@@ -407,8 +407,6 @@ def get_main_pr_language(languages, files) -> str:
     return main_language_str
 
 
-
-
 class IncrementalPR:
     def __init__(self, is_incremental: bool = False):
         self.is_incremental = is_incremental
@@ -423,3 +421,27 @@ class IncrementalPR:
     @property
     def last_seen_commit_sha(self):
         return None if self.last_seen_commit is None else self.last_seen_commit.sha
+
+    def get_repo_name(self) -> str:
+        """
+        Get the repository name in the format "owner/repo".
+        
+        Returns:
+            str: Repository name in the format "owner/repo"
+        """
+        raise NotImplementedError("Subclasses must implement get_repo_name")
+        
+    def get_latest_commit_sha(self) -> str:
+        """
+        Get the SHA of the latest commit in the PR.
+        
+        Returns:
+            str: SHA of the latest commit
+        """
+        raise NotImplementedError("Subclasses must implement get_latest_commit_sha")
+
+    def get_pr_labels(self, update=False) -> list:
+        """
+        Get the labels of the PR.
+        """
+        raise NotImplementedError("Subclasses must implement get_pr_labels")

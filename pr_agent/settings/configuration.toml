@@ -81,6 +81,8 @@ require_ticket_analysis_review=true
 persistent_comment=true
 extra_instructions = ""
 final_update_message = true
+# comment trigger options
+comment_trigger = "ALWAYS" # Options: "ALWAYS", "ONCE_PER_PR", "AFTER_CHANGES"
 # review labels
 enable_review_labels_security=true
 enable_review_labels_effort=true
@@ -360,3 +362,4 @@ pr_commands = [
     "/review",
     "/improve",
 ]
+
