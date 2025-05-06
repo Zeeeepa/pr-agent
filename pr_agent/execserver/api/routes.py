@@ -67,13 +67,31 @@ async def validate_settings(settings: Dict[str, str]):
     Validate settings
     """
     try:
-        # Validate the settings
-        valid, error_message = await settings_service.validate_settings(settings)
-        
-        if not valid:
-            return {"valid": False, "message": error_message, "code": "validation_error"}
-        
-        return {"valid": True, "message": "Settings validated successfully"}
+        # Get detailed validation results
+        if hasattr(settings_service, 'config_validation_service'):
+            valid, error_message, validation_results = await settings_service.config_validation_service.validate_all_settings(settings)
+            
+            if not valid:
+                return {
+                    "valid": False, 
+                    "message": error_message, 
+                    "code": "validation_error",
+                    "validation_results": validation_results
+                }
+            
+            return {
+                "valid": True, 
+                "message": "Settings validated successfully",
+                "validation_results": validation_results
+            }
+        else:
+            # Fall back to simple validation if config validation service is not available
+            valid, error_message = await settings_service.validate_settings(settings)
+            
+            if not valid:
+                return {"valid": False, "message": error_message, "code": "validation_error"}
+            
+            return {"valid": True, "message": "Settings validated successfully"}
     except Exception as e:
         logger.error(f"Error validating settings: {str(e)}")
         return {"valid": False, "message": str(e), "code": "validation_error"}
@@ -84,11 +102,22 @@ async def save_settings(settings: Dict[str, str]):
     Save settings
     """
     try:
-        # Validate settings before saving
-        valid, error_message = await settings_service.validate_settings(settings)
-        
-        if not valid:
-            raise HTTPException(status_code=400, detail={"message": error_message, "code": "validation_error"})
+        # Get detailed validation results
+        if hasattr(settings_service, 'config_validation_service'):
+            valid, error_message, validation_results = await settings_service.config_validation_service.validate_all_settings(settings)
+            
+            if not valid:
+                raise HTTPException(status_code=400, detail={
+                    "message": error_message, 
+                    "code": "validation_error",
+                    "validation_results": validation_results
+                })
+        else:
+            # Fall back to simple validation if config validation service is not available
+            valid, error_message = await settings_service.validate_settings(settings)
+            
+            if not valid:
+                raise HTTPException(status_code=400, detail={"message": error_message, "code": "validation_error"})
         
         # Save the settings
         await settings_service.save_settings(settings)

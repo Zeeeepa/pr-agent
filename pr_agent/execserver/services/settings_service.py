@@ -29,6 +29,7 @@ class SettingsService:
         self.settings_file = settings_file or os.path.join(os.path.dirname(os.path.dirname(__file__)), 'settings.json')
         self._settings = {}
         self._load_settings()
+        self._config_validation_service = None
     
     def _load_settings(self):
         """Load settings from the settings file"""
@@ -96,6 +97,21 @@ class SettingsService:
         """
         self._settings.update(settings)
         self._save_settings()
+    
+    @property
+    def config_validation_service(self):
+        """
+        Get the config validation service
+        
+        Returns:
+            Config validation service instance
+        """
+        if self._config_validation_service is None:
+            # Import here to avoid circular imports
+            from .config_validation_service import ConfigValidationService
+            self._config_validation_service = ConfigValidationService(self)
+        
+        return self._config_validation_service
     
     async def validate_settings(self, settings: Dict[str, str]) -> Tuple[bool, Optional[str]]:
         """
@@ -219,5 +235,11 @@ class SettingsService:
                 return False, "GitHub token validation failed: Connection error"
             except Exception as e:
                 return False, f"GitHub token validation failed: {str(e)}"
+        
+        # Use the config validation service to validate other settings
+        if hasattr(self, 'config_validation_service'):
+            valid, error, _ = await self.config_validation_service.validate_all_settings(settings)
+            if not valid:
+                return False, error
         
         return True, None
