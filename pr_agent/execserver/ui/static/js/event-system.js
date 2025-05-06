@@ -42,105 +42,148 @@ const ACTION_TYPES = {
 
 // Initialize the event system
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize the dashboard
-    initializeEventSystem();
-    
-    // Set up event handlers
-    setupEventHandlers();
-    
-    // Start auto-refresh if enabled
-    if (EVENT_SYSTEM.autoRefresh) {
-        startAutoRefresh();
+    try {
+        // Initialize the dashboard
+        initializeEventSystem();
+        
+        // Set up event handlers
+        setupEventHandlers();
+        
+        // Start auto-refresh if enabled
+        if (EVENT_SYSTEM.autoRefresh) {
+            startAutoRefresh();
+        }
+        
+        // Initialize settings
+        initializeSettings();
+    } catch (error) {
+        console.error('Error initializing event system:', error);
+        if (window.ErrorHandler && window.ErrorHandler.showError) {
+            window.ErrorHandler.showError('Failed to initialize event system: ' + error.message);
+        }
     }
-    
-    // Initialize settings
-    initializeSettings();
 });
 
 /**
  * Initialize the event system
  */
 function initializeEventSystem() {
-    // Fetch initial data
-    fetchRecentEvents();
-    fetchTriggers();
-    updateSystemStatus();
-    
-    // Update last updated timestamp
-    updateLastUpdated();
+    try {
+        // Fetch initial data
+        fetchRecentEvents();
+        fetchTriggers();
+        updateSystemStatus();
+        
+        // Update last updated timestamp
+        updateLastUpdated();
+    } catch (error) {
+        console.error('Error in initializeEventSystem:', error);
+        if (window.ErrorHandler && window.ErrorHandler.showError) {
+            window.ErrorHandler.showError('Failed to initialize event system: ' + error.message);
+        }
+    }
 }
 
 /**
  * Set up event handlers for the UI
  */
 function setupEventHandlers() {
-    // Event refresh button
-    const refreshButton = document.getElementById('refresh-events');
-    if (refreshButton) {
-        refreshButton.addEventListener('click', fetchRecentEvents);
-    }
-    
-    // Load more events button
-    const loadMoreButton = document.getElementById('load-more-events');
-    if (loadMoreButton) {
-        loadMoreButton.addEventListener('click', loadMoreEvents);
-    }
-    
-    // Create trigger button
-    const createTriggerButton = document.getElementById('create-trigger-btn');
-    if (createTriggerButton) {
-        createTriggerButton.addEventListener('click', showCreateTriggerModal);
-    }
-    
-    // View connections button
-    const viewConnectionsButton = document.getElementById('view-connections');
-    if (viewConnectionsButton) {
-        viewConnectionsButton.addEventListener('click', showConnectionsDiagram);
-    }
-    
-    // Filter buttons
-    const applyFiltersButton = document.getElementById('apply-filters');
-    if (applyFiltersButton) {
-        applyFiltersButton.addEventListener('click', applyTriggerFilters);
-    }
-    
-    const resetFiltersButton = document.getElementById('reset-filters');
-    if (resetFiltersButton) {
-        resetFiltersButton.addEventListener('click', resetTriggerFilters);
-    }
-    
-    // Settings button
-    const settingsBtn = document.getElementById('settings-btn');
-    if (settingsBtn) {
-        settingsBtn.addEventListener('click', showSettingsDialog);
-    }
-    
-    // Settings dialog close button
-    const settingsCloseBtn = document.querySelector('.settings-dialog-close');
-    if (settingsCloseBtn) {
-        settingsCloseBtn.addEventListener('click', hideSettingsDialog);
-    }
-    
-    // Settings dialog background click
-    const settingsDialog = document.getElementById('settings-dialog');
-    if (settingsDialog) {
-        settingsDialog.addEventListener('click', function(e) {
-            if (e.target === settingsDialog) {
-                hideSettingsDialog();
-            }
-        });
-    }
-    
-    // Validate settings button
-    const validateBtn = document.getElementById('validate-settings');
-    if (validateBtn) {
-        validateBtn.addEventListener('click', validateSettings);
-    }
-    
-    // Save settings button
-    const saveBtn = document.getElementById('save-settings');
-    if (saveBtn) {
-        saveBtn.addEventListener('click', saveSettings);
+    try {
+        // Event refresh button
+        const refreshButton = document.getElementById('refresh-events');
+        if (refreshButton) {
+            refreshButton.addEventListener('click', fetchRecentEvents);
+        } else {
+            console.warn('Refresh events button not found');
+        }
+        
+        // Load more events button
+        const loadMoreButton = document.getElementById('load-more-events');
+        if (loadMoreButton) {
+            loadMoreButton.addEventListener('click', loadMoreEvents);
+        } else {
+            console.warn('Load more events button not found');
+        }
+        
+        // Create trigger button
+        const createTriggerButton = document.getElementById('create-trigger-btn');
+        if (createTriggerButton) {
+            createTriggerButton.addEventListener('click', showCreateTriggerModal);
+        } else {
+            console.warn('Create trigger button not found');
+        }
+        
+        // View connections button
+        const viewConnectionsButton = document.getElementById('view-connections');
+        if (viewConnectionsButton) {
+            viewConnectionsButton.addEventListener('click', showConnectionsDiagram);
+        } else {
+            console.warn('View connections button not found');
+        }
+        
+        // Filter buttons
+        const applyFiltersButton = document.getElementById('apply-filters');
+        if (applyFiltersButton) {
+            applyFiltersButton.addEventListener('click', applyTriggerFilters);
+        } else {
+            console.warn('Apply filters button not found');
+        }
+        
+        const resetFiltersButton = document.getElementById('reset-filters');
+        if (resetFiltersButton) {
+            resetFiltersButton.addEventListener('click', resetTriggerFilters);
+        } else {
+            console.warn('Reset filters button not found');
+        }
+        
+        // Settings button
+        const settingsBtn = document.getElementById('settings-btn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', showSettingsDialog);
+        } else {
+            console.warn('Settings button not found');
+        }
+        
+        // Settings dialog close button
+        const settingsCloseBtn = document.querySelector('.settings-dialog-close');
+        if (settingsCloseBtn) {
+            settingsCloseBtn.addEventListener('click', hideSettingsDialog);
+        } else {
+            console.warn('Settings dialog close button not found');
+        }
+        
+        // Settings dialog background click
+        const settingsDialog = document.getElementById('settings-dialog');
+        if (settingsDialog) {
+            settingsDialog.addEventListener('click', function(e) {
+                if (e.target === settingsDialog) {
+                    hideSettingsDialog();
+                }
+            });
+        } else {
+            console.warn('Settings dialog not found');
+        }
+        
+        // Validate settings button
+        const validateBtn = document.getElementById('validate-settings');
+        if (validateBtn) {
+            validateBtn.addEventListener('click', validateSettings);
+        } else {
+            console.warn('Validate settings button not found');
+        }
+        
+        // Save settings button
+        const saveBtn = document.getElementById('save-settings');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', saveSettings);
+        } else {
+            console.warn('Save settings button not found');
+        }
+    } catch (error) {
+        console.error('Error in setupEventHandlers:', error);
+        if (window.ErrorHandler && window.ErrorHandler.showError) {
+            window.ErrorHandler.showError('Failed to set up event handlers: ' + error.message);
+        }
     }
 }
 
@@ -171,25 +214,40 @@ function updateLastUpdated() {
  * @param {boolean} silent - Whether to show UI feedback
  */
 function fetchRecentEvents(silent = false) {
-    if (!silent) {
-        showLoading('events-table-body');
+    try {
+        if (!silent) {
+            showLoading('events-table-body');
+        }
+        
+        // Fetch events from API
+        fetch(`${EVENT_SYSTEM.apiBaseUrl}/events?limit=${EVENT_SYSTEM.maxEventsToShow}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                updateEventsTable(data);
+                if (!silent) {
+                    updateLastUpdated();
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching events:', error);
+                if (!silent) {
+                    showError('events-table-body', 'Failed to fetch events');
+                }
+                if (window.ErrorHandler && window.ErrorHandler.showError) {
+                    window.ErrorHandler.showError('Failed to fetch events: ' + error.message, true);
+                }
+            });
+    } catch (error) {
+        console.error('Error in fetchRecentEvents:', error);
+        if (window.ErrorHandler && window.ErrorHandler.showError) {
+            window.ErrorHandler.showError('Error in fetchRecentEvents: ' + error.message);
+        }
     }
-    
-    // Fetch events from API
-    fetch(`${EVENT_SYSTEM.apiBaseUrl}/events?limit=${EVENT_SYSTEM.maxEventsToShow}`)
-        .then(response => response.json())
-        .then(data => {
-            updateEventsTable(data);
-            if (!silent) {
-                updateLastUpdated();
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching events:', error);
-            if (!silent) {
-                showError('events-table-body', 'Failed to fetch events');
-            }
-        });
 }
 
 /**

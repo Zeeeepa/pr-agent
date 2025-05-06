@@ -11,9 +11,15 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: 'dist',
+    outDir: 'static/dist',
     emptyOutDir: true,
     sourcemap: true,
+    // Copy static files to the output directory
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+      },
+    },
   },
   server: {
     port: 3000,
