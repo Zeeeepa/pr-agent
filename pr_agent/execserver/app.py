@@ -12,7 +12,8 @@ from pathlib import Path
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
 
 from pr_agent.execserver.api.routes import router as api_router
 from pr_agent.execserver.config import (
@@ -141,7 +142,57 @@ app.include_router(api_router)
 
 # Mount static files for UI
 static_dir = Path(__file__).parent / "ui" / "static"
-app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+# Add route for serving the React app
+@app.get("/{full_path:path}", response_class=HTMLResponse)
+async def serve_react_app(request: Request, full_path: str):
+    """Serve the React app for any path not matched by other routes."""
+    # Only serve the React app if the path doesn't start with /api
+    if full_path.startswith("api/"):
+        return Response(status_code=404)
+    
+    # Log the request to serve the React app
+    structured_log(
+        f"Serving React app for path: {full_path}",
+        level="info",
+        path=full_path,
+        correlation_id=RequestContext.get_correlation_id(),
+    )
+    
+    try:
+        # Return the index.html file
+        with open(static_dir / "index.html", "r") as f:
+            html_content = f.read()
+        
+        return HTMLResponse(content=html_content)
+    except Exception as e:
+        # Log the error
+        structured_log(
+            f"Error serving React app: {str(e)}",
+            level="error",
+            path=full_path,
+            error=str(e),
+            correlation_id=RequestContext.get_correlation_id(),
+        )
+        return HTMLResponse(
+            content=f"""
+            <html>
+                <head>
+                    <title>PR-Agent Dashboard - Error</title>
+                </head>
+                <body>
+                    <h1>Error Loading UI</h1>
+                    <p>The UI could not be loaded. Please check the server logs for more information.</p>
+                    <p>Error: {str(e)}</p>
+                    <p>
+                        <a href="/health">Check server health</a>
+                    </p>
+                </body>
+            </html>
+            """,
+            status_code=500
+        )
 
 # Health check endpoint
 @app.get("/health")
