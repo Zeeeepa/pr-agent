@@ -3,6 +3,7 @@ from typing import Dict, Any, List, Optional
 import json
 import uuid
 import logging
+from functools import lru_cache
 
 from ..models.event import Event
 from ..models.project import Project
@@ -16,53 +17,115 @@ from ..services.settings_service import SettingsService
 from pr_agent.servers.utils import verify_signature
 from pr_agent.servers.github_app import handle_github_webhooks as pr_agent_handle_github_webhooks
 from ..config import get_setting_or_env, set_settings_service
+from pr_agent.log.enhanced_logging import structured_log
 
 logger = logging.getLogger(__name__)
 
 # Create router
-router = APIRouter()
+router = APIRouter(prefix="/api/v1")
 
-# Service instances
-settings_service = SettingsService()
-set_settings_service(settings_service)  # Set the global settings service
-db_service = DatabaseService(settings_service)
-github_service = GitHubService()
-workflow_service = WorkflowService()
-event_service = EventService(db_service, github_service, workflow_service)
+# Service dependency functions
+@lru_cache()
+def get_settings_service():
+    """Get the settings service instance"""
+    from pr_agent.execserver.app import settings_service
+    return settings_service
+
+@lru_cache()
+def get_db_service():
+    """Get the database service instance"""
+    from pr_agent.execserver.app import db_service
+    return db_service
+
+@lru_cache()
+def get_github_service():
+    """Get the GitHub service instance"""
+    from pr_agent.execserver.app import github_service
+    return github_service
+
+@lru_cache()
+def get_workflow_service():
+    """Get the workflow service instance"""
+    from pr_agent.execserver.app import workflow_service
+    return workflow_service
+
+@lru_cache()
+def get_event_service():
+    """Get the event service instance"""
+    from pr_agent.execserver.app import event_service
+    return event_service
+
+# Standard error response function
+def create_error_response(status_code: int, message: str, code: str = None, details: Dict = None):
+    """Create a standardized error response"""
+    error_response = {
+        "message": message,
+    }
+    
+    if code:
+        error_response["code"] = code
+    
+    if details:
+        error_response["details"] = details
+    
+    # Log the error
+    structured_log(
+        f"API Error: {message}",
+        level="error",
+        status_code=status_code,
+        error_code=code,
+        details=details
+    )
+    
+    raise HTTPException(status_code=status_code, detail=error_response)
 
 # GitHub webhook endpoint
-@router.post("/api/v1/github_webhooks")
-async def handle_github_webhooks(background_tasks: BackgroundTasks, request: Request, response: Response):
+@router.post("/github_webhooks")
+async def handle_github_webhooks(
+    background_tasks: BackgroundTasks, 
+    request: Request, 
+    response: Response,
+    event_service: EventService = Depends(get_event_service)
+):
     """
     Handle GitHub webhook events
     """
-    # Get the request body
-    body = await request.json()
-    
-    # Verify the webhook signature
-    github_secret = get_setting_or_env("GITHUB_WEBHOOK_SECRET")
-    if github_secret:
-        signature = request.headers.get("X-Hub-Signature-256")
-        if not signature:
-            raise HTTPException(status_code=401, detail="Missing signature header")
+    try:
+        # Get the request body
+        body = await request.json()
         
-        if not verify_signature(await request.body(), signature, github_secret):
-            raise HTTPException(status_code=401, detail="Invalid signature")
-    
-    # Get the event type
-    event_type = request.headers.get("X-GitHub-Event")
-    if not event_type:
-        raise HTTPException(status_code=400, detail="Missing event type header")
-    
-    # Process the webhook in the background using both PR-Agent's handler and our custom handler
-    background_tasks.add_task(pr_agent_handle_github_webhooks, background_tasks, request, response)
-    background_tasks.add_task(event_service.process_webhook, event_type, body)
-    
-    return {"status": "processing"}
+        # Verify the webhook signature
+        github_secret = get_setting_or_env("GITHUB_WEBHOOK_SECRET")
+        if github_secret:
+            signature = request.headers.get("X-Hub-Signature-256")
+            if not signature:
+                return create_error_response(401, "Missing signature header", "missing_signature")
+            
+            if not verify_signature(await request.body(), signature, github_secret):
+                return create_error_response(401, "Invalid signature", "invalid_signature")
+        
+        # Get the event type
+        event_type = request.headers.get("X-GitHub-Event")
+        if not event_type:
+            return create_error_response(400, "Missing event type header", "missing_event_type")
+        
+        # Process the webhook in the background using both PR-Agent's handler and our custom handler
+        background_tasks.add_task(pr_agent_handle_github_webhooks, background_tasks, request, response)
+        background_tasks.add_task(event_service.process_webhook, event_type, body)
+        
+        return {"status": "processing"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error handling GitHub webhook: {str(e)}")
+        return create_error_response(500, f"Failed to process webhook: {str(e)}", "server_error")
 
 # Settings endpoints
-@router.post("/api/v1/settings/validate")
-async def validate_settings(settings: Dict[str, str]):
+@router.post("/settings/validate")
+async def validate_settings(
+    settings: Dict[str, str],
+    settings_service: SettingsService = Depends(get_settings_service)
+):
     """
     Validate settings
     """
@@ -78,8 +141,12 @@ async def validate_settings(settings: Dict[str, str]):
         logger.error(f"Error validating settings: {str(e)}")
         return {"valid": False, "message": str(e), "code": "validation_error"}
 
-@router.post("/api/v1/settings")
-async def save_settings(settings: Dict[str, str]):
+@router.post("/settings")
+async def save_settings(
+    settings: Dict[str, str],
+    settings_service: SettingsService = Depends(get_settings_service),
+    db_service: DatabaseService = Depends(get_db_service)
+):
     """
     Save settings
     """
@@ -88,7 +155,7 @@ async def save_settings(settings: Dict[str, str]):
         valid, error_message = await settings_service.validate_settings(settings)
         
         if not valid:
-            raise HTTPException(status_code=400, detail={"message": error_message, "code": "validation_error"})
+            return create_error_response(400, error_message, "validation_error")
         
         # Save the settings
         await settings_service.save_settings(settings)
@@ -97,22 +164,32 @@ async def save_settings(settings: Dict[str, str]):
         if 'SUPABASE_URL' in settings and 'SUPABASE_ANON_KEY' in settings:
             # Test database connection
             if not await db_service.test_connection():
-                raise HTTPException(status_code=400, detail={"message": "Failed to connect to Supabase with the provided credentials", "code": "db_connection_error"})
+                return create_error_response(
+                    400, 
+                    "Failed to connect to Supabase with the provided credentials", 
+                    "db_connection_error"
+                )
             
             # Get connection status for detailed error message
             connection_status = await db_service.get_connection_status()
             if not connection_status["connected"] and connection_status["error"]:
-                raise HTTPException(status_code=400, detail={"message": connection_status["error"], "code": "db_connection_error"})
+                return create_error_response(
+                    400, 
+                    connection_status["error"], 
+                    "db_connection_error"
+                )
         
         return {"status": "success", "message": "Settings saved successfully"}
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error saving settings: {str(e)}")
-        raise HTTPException(status_code=500, detail={"message": f"Failed to save settings: {str(e)}", "code": "server_error"})
+        return create_error_response(500, f"Failed to save settings: {str(e)}", "server_error")
 
-@router.get("/api/v1/settings")
-async def get_settings():
+@router.get("/settings")
+async def get_settings(
+    settings_service: SettingsService = Depends(get_settings_service)
+):
     """
     Get settings
     """
@@ -130,11 +207,13 @@ async def get_settings():
         return masked_settings
     except Exception as e:
         logger.error(f"Error getting settings: {str(e)}")
-        raise HTTPException(status_code=500, detail={"message": f"Failed to get settings: {str(e)}", "code": "server_error"})
+        return create_error_response(500, f"Failed to get settings: {str(e)}", "server_error")
 
 # Database status endpoint
-@router.get("/api/v1/database/status")
-async def get_database_status():
+@router.get("/database/status")
+async def get_database_status(
+    db_service: DatabaseService = Depends(get_db_service)
+):
     """
     Get database connection status
     """
@@ -154,8 +233,10 @@ async def get_database_status():
         return {"status": "error", "message": str(e)}
 
 # Database migration status endpoint
-@router.get("/api/v1/database/migrations")
-async def get_migration_status():
+@router.get("/database/migrations")
+async def get_migration_status(
+    db_service: DatabaseService = Depends(get_db_service)
+):
     """
     Get database migration status
     """
@@ -186,8 +267,10 @@ async def get_migration_status():
         return {"status": "error", "message": str(e)}
 
 # Apply migrations endpoint
-@router.post("/api/v1/database/migrations/apply")
-async def apply_migrations():
+@router.post("/database/migrations/apply")
+async def apply_migrations(
+    db_service: DatabaseService = Depends(get_db_service)
+):
     """
     Apply pending database migrations
     """
@@ -195,11 +278,12 @@ async def apply_migrations():
         # Check if database is connected
         connection_status = await db_service.get_connection_status()
         if not connection_status["connected"]:
-            raise HTTPException(status_code=400, detail={
-                "message": "Database not connected",
-                "error": connection_status["error"] or "Unknown error",
-                "code": "db_connection_error"
-            })
+            return create_error_response(
+                400, 
+                "Database not connected", 
+                "db_connection_error",
+                {"error": connection_status["error"] or "Unknown error"}
+            )
         
         # Apply migrations
         if db_service.migration_service:
@@ -220,22 +304,18 @@ async def apply_migrations():
                     "failed": failed
                 }
         else:
-            raise HTTPException(status_code=400, detail={
-                "message": "Migration service not initialized",
-                "code": "migration_service_error"
-            })
+            return create_error_response(400, "Migration service not initialized", "migration_service_error")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error applying migrations: {str(e)}")
-        raise HTTPException(status_code=500, detail={
-            "message": f"Failed to apply migrations: {str(e)}",
-            "code": "server_error"
-        })
+        return create_error_response(500, f"Failed to apply migrations: {str(e)}", "server_error")
 
 # Projects endpoints
-@router.get("/api/v1/projects")
-async def get_projects() -> List[Project]:
+@router.get("/projects")
+async def get_projects(
+    db_service: DatabaseService = Depends(get_db_service)
+) -> List[Project]:
     """
     Get all projects
     """
@@ -243,14 +323,20 @@ async def get_projects() -> List[Project]:
         return await db_service.get_projects()
     except ValueError as e:
         if "Supabase is not initialized" in str(e):
-            raise HTTPException(status_code=400, detail={"message": "Database connection not configured. Please set up Supabase URL and API key in settings.", "code": "db_not_configured"})
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+            return create_error_response(
+                400, 
+                "Database connection not configured. Please set up Supabase URL and API key in settings.", 
+                "db_not_configured"
+            )
+        return create_error_response(500, str(e), "server_error")
     except Exception as e:
         logger.error(f"Error getting projects: {str(e)}")
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+        return create_error_response(500, str(e), "server_error")
 
-@router.get("/api/v1/projects/github")
-async def get_github_projects() -> List[Project]:
+@router.get("/projects/github")
+async def get_github_projects(
+    github_service: GitHubService = Depends(get_github_service)
+) -> List[Project]:
     """
     Get all GitHub repositories
     """
@@ -258,35 +344,49 @@ async def get_github_projects() -> List[Project]:
         return await github_service.get_repositories()
     except ValueError as e:
         if "GitHub token" in str(e):
-            raise HTTPException(status_code=400, detail={"message": "GitHub token not configured. Please set up GitHub token in settings.", "code": "github_not_configured"})
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+            return create_error_response(
+                400, 
+                "GitHub token not configured. Please set up GitHub token in settings.", 
+                "github_not_configured"
+            )
+        return create_error_response(500, str(e), "server_error")
     except Exception as e:
         logger.error(f"Error getting GitHub projects: {str(e)}")
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+        return create_error_response(500, str(e), "server_error")
 
-@router.get("/api/v1/projects/{project_id}")
-async def get_project(project_id: str) -> Project:
+@router.get("/projects/{project_id}")
+async def get_project(
+    project_id: str,
+    db_service: DatabaseService = Depends(get_db_service)
+) -> Project:
     """
     Get a project by ID
     """
     try:
         project = await db_service.get_project(project_id)
         if not project:
-            raise HTTPException(status_code=404, detail={"message": "Project not found", "code": "not_found"})
+            return create_error_response(404, "Project not found", "not_found")
         return project
     except ValueError as e:
         if "Supabase is not initialized" in str(e):
-            raise HTTPException(status_code=400, detail={"message": "Database connection not configured. Please set up Supabase URL and API key in settings.", "code": "db_not_configured"})
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+            return create_error_response(
+                400, 
+                "Database connection not configured. Please set up Supabase URL and API key in settings.", 
+                "db_not_configured"
+            )
+        return create_error_response(500, str(e), "server_error")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error getting project: {str(e)}")
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+        return create_error_response(500, str(e), "server_error")
 
 # Triggers endpoints
-@router.get("/api/v1/triggers")
-async def get_triggers(project_id: Optional[str] = None) -> List[Trigger]:
+@router.get("/triggers")
+async def get_triggers(
+    project_id: Optional[str] = None,
+    db_service: DatabaseService = Depends(get_db_service)
+) -> List[Trigger]:
     """
     Get all triggers, optionally filtered by project
     """
@@ -306,14 +406,21 @@ async def get_triggers(project_id: Optional[str] = None) -> List[Trigger]:
         return all_triggers
     except ValueError as e:
         if "Supabase is not initialized" in str(e):
-            raise HTTPException(status_code=400, detail={"message": "Database connection not configured. Please set up Supabase URL and API key in settings.", "code": "db_not_configured"})
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+            return create_error_response(
+                400, 
+                "Database connection not configured. Please set up Supabase URL and API key in settings.", 
+                "db_not_configured"
+            )
+        return create_error_response(500, str(e), "server_error")
     except Exception as e:
         logger.error(f"Error getting triggers: {str(e)}")
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+        return create_error_response(500, str(e), "server_error")
 
-@router.post("/api/v1/triggers")
-async def create_trigger(trigger: Trigger) -> Trigger:
+@router.post("/triggers")
+async def create_trigger(
+    trigger: Trigger,
+    db_service: DatabaseService = Depends(get_db_service)
+) -> Trigger:
     """
     Create a new trigger
     """
@@ -321,63 +428,85 @@ async def create_trigger(trigger: Trigger) -> Trigger:
         # Validate project exists
         project = await db_service.get_project(trigger.project_id)
         if not project:
-            raise HTTPException(status_code=404, detail={"message": "Project not found", "code": "not_found"})
+            return create_error_response(404, "Project not found", "not_found")
         
         # Create the trigger
         return await db_service.create_trigger(trigger)
     except ValueError as e:
         if "Supabase is not initialized" in str(e):
-            raise HTTPException(status_code=400, detail={"message": "Database connection not configured. Please set up Supabase URL and API key in settings.", "code": "db_not_configured"})
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+            return create_error_response(
+                400, 
+                "Database connection not configured. Please set up Supabase URL and API key in settings.", 
+                "db_not_configured"
+            )
+        return create_error_response(500, str(e), "server_error")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error creating trigger: {str(e)}")
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+        return create_error_response(500, str(e), "server_error")
 
-@router.get("/api/v1/triggers/{trigger_id}")
-async def get_trigger(trigger_id: str) -> Trigger:
+@router.get("/triggers/{trigger_id}")
+async def get_trigger(
+    trigger_id: str,
+    db_service: DatabaseService = Depends(get_db_service)
+) -> Trigger:
     """
     Get a trigger by ID
     """
     try:
         trigger = await db_service.get_trigger(trigger_id)
         if not trigger:
-            raise HTTPException(status_code=404, detail={"message": "Trigger not found", "code": "not_found"})
+            return create_error_response(404, "Trigger not found", "not_found")
         return trigger
     except ValueError as e:
         if "Supabase is not initialized" in str(e):
-            raise HTTPException(status_code=400, detail={"message": "Database connection not configured. Please set up Supabase URL and API key in settings.", "code": "db_not_configured"})
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+            return create_error_response(
+                400, 
+                "Database connection not configured. Please set up Supabase URL and API key in settings.", 
+                "db_not_configured"
+            )
+        return create_error_response(500, str(e), "server_error")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error getting trigger: {str(e)}")
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+        return create_error_response(500, str(e), "server_error")
 
-@router.patch("/api/v1/triggers/{trigger_id}")
-async def update_trigger(trigger_id: str, data: Dict[str, Any]) -> Trigger:
+@router.patch("/triggers/{trigger_id}")
+async def update_trigger(
+    trigger_id: str, 
+    data: Dict[str, Any],
+    db_service: DatabaseService = Depends(get_db_service)
+) -> Trigger:
     """
     Update a trigger
     """
     try:
         trigger = await db_service.update_trigger(trigger_id, data)
         if not trigger:
-            raise HTTPException(status_code=404, detail={"message": "Trigger not found", "code": "not_found"})
+            return create_error_response(404, "Trigger not found", "not_found")
         return trigger
     except ValueError as e:
         if "Supabase is not initialized" in str(e):
-            raise HTTPException(status_code=400, detail={"message": "Database connection not configured. Please set up Supabase URL and API key in settings.", "code": "db_not_configured"})
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+            return create_error_response(
+                400, 
+                "Database connection not configured. Please set up Supabase URL and API key in settings.", 
+                "db_not_configured"
+            )
+        return create_error_response(500, str(e), "server_error")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error updating trigger: {str(e)}")
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+        return create_error_response(500, str(e), "server_error")
 
 # Workflows endpoints
-@router.get("/api/v1/workflows")
-async def get_workflows(repository: str) -> List[Workflow]:
+@router.get("/workflows")
+async def get_workflows(
+    repository: str,
+    github_service: GitHubService = Depends(get_github_service)
+) -> List[Workflow]:
     """
     Get all workflows for a repository
     """
@@ -386,14 +515,23 @@ async def get_workflows(repository: str) -> List[Workflow]:
         return await github_service.get_workflows(owner, repo)
     except ValueError as e:
         if "GitHub token" in str(e):
-            raise HTTPException(status_code=400, detail={"message": "GitHub token not configured. Please set up GitHub token in settings.", "code": "github_not_configured"})
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+            return create_error_response(
+                400, 
+                "GitHub token not configured. Please set up GitHub token in settings.", 
+                "github_not_configured"
+            )
+        return create_error_response(500, str(e), "server_error")
     except Exception as e:
         logger.error(f"Error getting workflows: {str(e)}")
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+        return create_error_response(500, str(e), "server_error")
 
-@router.get("/api/v1/workflow_runs")
-async def get_workflow_runs(repository: str, workflow_id: Optional[str] = None, limit: int = 10) -> List[WorkflowRun]:
+@router.get("/workflow_runs")
+async def get_workflow_runs(
+    repository: str, 
+    workflow_id: Optional[str] = None, 
+    limit: int = 10,
+    github_service: GitHubService = Depends(get_github_service)
+) -> List[WorkflowRun]:
     """
     Get workflow runs for a repository
     """
@@ -402,14 +540,24 @@ async def get_workflow_runs(repository: str, workflow_id: Optional[str] = None, 
         return await github_service.get_workflow_runs(owner, repo, workflow_id, limit)
     except ValueError as e:
         if "GitHub token" in str(e):
-            raise HTTPException(status_code=400, detail={"message": "GitHub token not configured. Please set up GitHub token in settings.", "code": "github_not_configured"})
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+            return create_error_response(
+                400, 
+                "GitHub token not configured. Please set up GitHub token in settings.", 
+                "github_not_configured"
+            )
+        return create_error_response(500, str(e), "server_error")
     except Exception as e:
         logger.error(f"Error getting workflow runs: {str(e)}")
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+        return create_error_response(500, str(e), "server_error")
 
-@router.post("/api/v1/workflows/{workflow_id}/dispatch")
-async def trigger_workflow(workflow_id: str, repository: str, ref: Optional[str] = None, inputs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+@router.post("/workflows/{workflow_id}/dispatch")
+async def trigger_workflow(
+    workflow_id: str, 
+    repository: str, 
+    ref: Optional[str] = None, 
+    inputs: Optional[Dict[str, Any]] = None,
+    github_service: GitHubService = Depends(get_github_service)
+) -> Dict[str, Any]:
     """
     Trigger a workflow
     """
@@ -418,22 +566,30 @@ async def trigger_workflow(workflow_id: str, repository: str, ref: Optional[str]
         success = await github_service.trigger_workflow(owner, repo, workflow_id, ref, inputs)
         
         if not success:
-            raise HTTPException(status_code=500, detail={"message": "Failed to trigger workflow", "code": "workflow_error"})
+            return create_error_response(500, "Failed to trigger workflow", "workflow_error")
         
         return {"status": "triggered"}
     except ValueError as e:
         if "GitHub token" in str(e):
-            raise HTTPException(status_code=400, detail={"message": "GitHub token not configured. Please set up GitHub token in settings.", "code": "github_not_configured"})
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+            return create_error_response(
+                400, 
+                "GitHub token not configured. Please set up GitHub token in settings.", 
+                "github_not_configured"
+            )
+        return create_error_response(500, str(e), "server_error")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error triggering workflow: {str(e)}")
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+        return create_error_response(500, str(e), "server_error")
 
 # Events endpoints
-@router.get("/api/v1/events")
-async def get_events(repository: Optional[str] = None, limit: int = 10) -> List[Event]:
+@router.get("/events")
+async def get_events(
+    repository: Optional[str] = None, 
+    limit: int = 10,
+    event_service: EventService = Depends(get_event_service)
+) -> List[Event]:
     """
     Get recent events
     """
@@ -441,15 +597,24 @@ async def get_events(repository: Optional[str] = None, limit: int = 10) -> List[
         return await event_service.get_recent_events(repository, limit)
     except ValueError as e:
         if "Supabase is not initialized" in str(e):
-            raise HTTPException(status_code=400, detail={"message": "Database connection not configured. Please set up Supabase URL and API key in settings.", "code": "db_not_configured"})
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+            return create_error_response(
+                400, 
+                "Database connection not configured. Please set up Supabase URL and API key in settings.", 
+                "db_not_configured"
+            )
+        return create_error_response(500, str(e), "server_error")
     except Exception as e:
         logger.error(f"Error getting events: {str(e)}")
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+        return create_error_response(500, str(e), "server_error")
 
 # Execute code endpoint
-@router.post("/api/v1/execute_code")
-async def execute_code(code: str, repository: str, event_data: Dict[str, Any]) -> Dict[str, Any]:
+@router.post("/execute_code")
+async def execute_code(
+    code: str, 
+    repository: str, 
+    event_data: Dict[str, Any],
+    workflow_service: WorkflowService = Depends(get_workflow_service)
+) -> Dict[str, Any]:
     """
     Execute Python code
     """
@@ -457,9 +622,10 @@ async def execute_code(code: str, repository: str, event_data: Dict[str, Any]) -
         success = await workflow_service.execute_python_code(code, repository, event_data)
         
         if not success:
-            raise HTTPException(status_code=500, detail={"message": "Failed to execute code", "code": "execution_error"})
+            return create_error_response(500, "Failed to execute code", "execution_error")
         
         return {"status": "executed"}
     except Exception as e:
         logger.error(f"Error executing code: {str(e)}")
-        raise HTTPException(status_code=500, detail={"message": str(e), "code": "server_error"})
+        return create_error_response(500, str(e), "server_error")
+

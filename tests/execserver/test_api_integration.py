@@ -13,8 +13,7 @@ async def test_health_endpoint():
         response = await client.get(f"{BASE_URL}/health")
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "ok"
-        assert "version" in data
+        assert data["status"] == "healthy"
 
 @pytest.mark.asyncio
 async def test_events_endpoint():
@@ -57,6 +56,13 @@ async def test_github_webhook_endpoint():
 async def test_ui_static_files():
     """Test that the UI static files are being served."""
     async with httpx.AsyncClient() as client:
-        response = await client.get(f"{BASE_URL}/")
+        # Test the root redirect
+        response = await client.get(f"{BASE_URL}/", follow_redirects=False)
+        assert response.status_code == 302
+        assert response.headers["location"] == "/ui"
+        
+        # Test the UI static files
+        response = await client.get(f"{BASE_URL}/ui")
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]
+

@@ -136,19 +136,29 @@ async def general_exception_handler(request: Request, exc: Exception):
         },
     )
 
-# Include API routes
-app.include_router(api_router)
-
-# Mount static files for UI
-static_dir = Path(__file__).parent / "ui" / "static"
-app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
-
 # Health check endpoint
 @app.get("/health")
 @handle_exceptions(default_message="Health check failed")
 async def health_check():
     """Health check endpoint for monitoring."""
-    return {"status": "ok", "version": "0.1.0"}
+    return {"status": "healthy"}
+
+# Include API routes
+app.include_router(api_router)
+
+# Mount static files for UI - use a specific path prefix to avoid conflicts with API routes
+static_dir = Path(__file__).parent / "ui" / "static"
+app.mount("/ui", StaticFiles(directory=str(static_dir), html=True), name="static")
+
+# Add a root redirect to the UI
+@app.get("/")
+async def root_redirect():
+    """Redirect root path to UI."""
+    return JSONResponse(
+        status_code=302,
+        headers={"Location": "/ui"},
+        content={"message": "Redirecting to UI"}
+    )
 
 async def check_and_init_database(supabase_url: str, supabase_anon_key: str) -> bool:
     """
@@ -288,3 +298,4 @@ if __name__ == "__main__":
     
     port = get_ui_port()
     uvicorn.run(app, host="0.0.0.0", port=port)
+
