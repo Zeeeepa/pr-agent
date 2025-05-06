@@ -14,10 +14,8 @@ describe('ThemeToggle', () => {
       value: localStorageMock
     });
     
-    // Mock document.documentElement
-    Object.defineProperty(document.documentElement, 'setAttribute', {
-      value: vi.fn()
-    });
+    // Create a spy on document.documentElement.setAttribute instead of redefining it
+    vi.spyOn(document.documentElement, 'setAttribute');
     
     // Mock matchMedia
     Object.defineProperty(window, 'matchMedia', {
@@ -56,4 +54,3 @@ describe('ThemeToggle', () => {
     expect(document.documentElement.setAttribute).toHaveBeenCalledWith('data-theme', 'dark');
   });
 });
-

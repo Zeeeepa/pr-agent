@@ -1,8 +1,20 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '../../test/test-utils';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent } from '../../test/test-utils';
 import SettingsDialog from '../SettingsDialog';
+import { act } from 'react-dom/test-utils';
 
 describe('SettingsDialog', () => {
+  beforeEach(() => {
+    // Mock setTimeout
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    // Restore timers
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
   it('does not render when isOpen is false', () => {
     render(<SettingsDialog isOpen={false} onClose={() => {}} />);
     expect(screen.queryByText('Settings')).not.toBeInTheDocument();
@@ -17,53 +29,60 @@ describe('SettingsDialog', () => {
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });
 
-  it('calls onClose when close button is clicked', async () => {
+  it('calls onClose when close button is clicked', () => {
     const onClose = vi.fn();
-    const { user } = render(<SettingsDialog isOpen={true} onClose={onClose} />);
+    render(<SettingsDialog isOpen={true} onClose={onClose} />);
     
-    await user.click(screen.getByRole('button', { name: 'Close settings' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close settings' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onClose when cancel button is clicked', async () => {
+  it('calls onClose when cancel button is clicked', () => {
     const onClose = vi.fn();
-    const { user } = render(<SettingsDialog isOpen={true} onClose={onClose} />);
+    render(<SettingsDialog isOpen={true} onClose={onClose} />);
     
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('updates input values when typing', async () => {
-    const { user } = render(<SettingsDialog isOpen={true} onClose={() => {}} />);
+  it('updates input values when typing', () => {
+    render(<SettingsDialog isOpen={true} onClose={() => {}} />);
     
     const tokenInput = screen.getByLabelText('GitHub Token');
     const apiUrlInput = screen.getByLabelText('API URL');
     
-    await user.type(tokenInput, 'test-token');
-    await user.type(apiUrlInput, 'https://api.example.com');
+    fireEvent.change(tokenInput, { target: { value: 'test-token' } });
+    fireEvent.change(apiUrlInput, { target: { value: 'https://api.example.com' } });
     
     expect(tokenInput).toHaveValue('test-token');
     expect(apiUrlInput).toHaveValue('https://api.example.com');
   });
 
-  it('disables save button while saving', async () => {
-    // Mock timers for the setTimeout in handleSave
-    vi.useFakeTimers();
+  it('shows saving state and calls onClose after save completes', () => {
+    // Create a mock for the onClose function
+    const onClose = vi.fn();
     
-    const { user } = render(<SettingsDialog isOpen={true} onClose={() => {}} />);
+    // Render the component
+    render(<SettingsDialog isOpen={true} onClose={onClose} />);
     
+    // Get the save button
     const saveButton = screen.getByRole('button', { name: 'Save' });
-    await user.click(saveButton);
     
-    // Button should now be disabled and show "Saving..."
+    // Click the save button using act to handle state updates
+    act(() => {
+      fireEvent.click(saveButton);
+    });
+    
+    // Verify button is disabled and shows "Saving..."
     expect(saveButton).toBeDisabled();
     expect(saveButton).toHaveTextContent('Saving...');
     
-    // Fast-forward timers to complete the save operation
-    vi.runAllTimers();
+    // Advance timers by 600ms (more than the 500ms setTimeout in the component)
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
     
-    // Restore real timers
-    vi.useRealTimers();
+    // Verify onClose was called after the timeout
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
-

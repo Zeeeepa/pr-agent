@@ -12,12 +12,11 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  const handleSave = async () => {
+  const handleSave = () => {
     setSaving(true);
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+    
+    // Simulate API call with a timeout
+    setTimeout(() => {
       // In a real app, you would save the settings to the server
       // await fetch('/api/v1/settings', {
       //   method: 'POST',
@@ -25,12 +24,9 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
       //   body: JSON.stringify({ githubToken, apiUrl })
       // });
       
-      onClose();
-    } catch (error) {
-      console.error('Failed to save settings:', error);
-    } finally {
       setSaving(false);
-    }
+      onClose();
+    }, 500);
   };
 
   return (
@@ -86,4 +82,3 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
 };
 
 export default SettingsDialog;
-
