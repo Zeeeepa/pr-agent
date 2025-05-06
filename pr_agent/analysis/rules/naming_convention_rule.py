@@ -162,4 +162,3 @@ class NamingConventionRule(Rule):
                         })
 
         return issues
-

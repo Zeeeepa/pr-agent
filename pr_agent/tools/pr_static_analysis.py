@@ -254,4 +254,3 @@ Your response should be concise, constructive, and focused on helping the develo
             self.git_provider.publish_comment(markdown)
 
         return markdown
-

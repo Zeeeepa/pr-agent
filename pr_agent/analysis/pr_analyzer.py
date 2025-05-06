@@ -235,4 +235,3 @@ class PRAnalyzer:
         }
 
         return pr_data
-

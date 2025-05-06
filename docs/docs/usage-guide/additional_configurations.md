@@ -237,4 +237,3 @@ Where the `ignore_pr_authors` is a list of usernames that you want to ignore.
 
 !!! note
     There is one specific case where bots will receive an automatic response - when they generated a PR with a _failed test_. In that case, the [`ci_feedback`](https://qodo-merge-docs.qodo.ai/tools/ci_feedback/) tool will be invoked.
-

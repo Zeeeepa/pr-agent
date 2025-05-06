@@ -1,20 +1,22 @@
-import os
-from typing import Dict, Any, List, Optional, Union
 import asyncio
 import json
+import os
+from typing import Any, Dict, List, Optional, Union
 
 from github import Github, GithubIntegration
 from github.Repository import Repository
 from github.Workflow import Workflow as GithubWorkflow
 from github.WorkflowRun import WorkflowRun as GithubWorkflowRun
 
-from pr_agent.git_providers.github_provider import GithubProvider
 from pr_agent.git_providers.git_provider import GitProvider
+from pr_agent.git_providers.github_provider import GithubProvider
 from pr_agent.servers.github_action_runner import get_setting_or_env
 
+from ..config import (get_github_app_id, get_github_app_installation_id,
+                      get_github_app_private_key, get_github_token)
 from ..models.project import Project
-from ..models.workflow import Workflow, WorkflowRun, WorkflowStatus, WorkflowTrigger
-from ..config import get_github_token, get_github_app_id, get_github_app_private_key, get_github_app_installation_id
+from ..models.workflow import (Workflow, WorkflowRun, WorkflowStatus,
+                               WorkflowTrigger)
 
 
 class GitHubService:
@@ -25,14 +27,14 @@ class GitHubService:
         """Initialize the GitHub service"""
         # Initialize PR-Agent's GitHub provider
         self.pr_agent_github_provider = None
-        
+
         # Initialize PyGithub client
         try:
             github_app_id = get_github_app_id()
             github_app_private_key = get_github_app_private_key()
             github_app_installation_id = get_github_app_installation_id()
             github_token = get_github_token()
-            
+
             if github_app_id and github_app_private_key and github_app_installation_id:
                 # Use GitHub App authentication (PyGithub 1.58.1 compatible)
                 integration = GithubIntegration(
@@ -54,25 +56,25 @@ class GitHubService:
                 self.github = Github(github_token)
             else:
                 raise ValueError("GitHub authentication credentials not provided")
-    
+
     def get_pr_agent_github_provider(self, pr_url: Optional[str] = None) -> GithubProvider:
         """
         Get PR-Agent's GitHub provider
-        
+
         Args:
             pr_url: Optional PR URL to initialize the provider with
-            
+
         Returns:
             GithubProvider instance
         """
         if not self.pr_agent_github_provider or pr_url:
             self.pr_agent_github_provider = GithubProvider(pr_url)
         return self.pr_agent_github_provider
-    
+
     async def get_repositories(self) -> List[Project]:
         """
         Get all repositories the authenticated user has access to
-        
+
         Returns:
             List of Project objects
         """
@@ -89,15 +91,15 @@ class GitHubService:
             )
             repos.append(project)
         return repos
-    
+
     async def get_repository(self, owner: str, name: str) -> Optional[Project]:
         """
         Get a repository by owner and name
-        
+
         Args:
             owner: Repository owner
             name: Repository name
-            
+
         Returns:
             Project object or None if not found
         """
@@ -115,26 +117,26 @@ class GitHubService:
         except Exception as e:
             print(f"Error getting repository: {e}")
             return None
-    
+
     async def get_workflows(self, owner: str, name: str) -> List[Workflow]:
         """
         Get all workflows for a repository
-        
+
         Args:
             owner: Repository owner
             name: Repository name
-            
+
         Returns:
             List of Workflow objects
         """
         try:
             repo = self.github.get_repo(f"{owner}/{name}")
             workflows = []
-            
+
             for workflow in repo.get_workflows():
                 # Map GitHub workflow state to our WorkflowStatus enum
                 status = WorkflowStatus.ACTIVE if workflow.state == "active" else WorkflowStatus.INACTIVE
-                
+
                 # Try to determine the trigger type from the workflow file
                 trigger = WorkflowTrigger.PUSH  # Default
                 try:
@@ -149,7 +151,7 @@ class GitHubService:
                         trigger = WorkflowTrigger.REPOSITORY_DISPATCH
                 except:
                     pass
-                
+
                 workflows.append(Workflow(
                     id=str(workflow.id),
                     name=workflow.name,
@@ -160,41 +162,41 @@ class GitHubService:
                     html_url=workflow.html_url,
                     api_url=workflow.url
                 ))
-            
+
             return workflows
         except Exception as e:
             print(f"Error getting workflows: {e}")
             return []
-    
-    async def get_workflow_runs(self, owner: str, name: str, workflow_id: Optional[str] = None, 
+
+    async def get_workflow_runs(self, owner: str, name: str, workflow_id: Optional[str] = None,
                               limit: int = 10) -> List[WorkflowRun]:
         """
         Get workflow runs for a repository
-        
+
         Args:
             owner: Repository owner
             name: Repository name
             workflow_id: Optional workflow ID to filter by
             limit: Maximum number of runs to return
-            
+
         Returns:
             List of WorkflowRun objects
         """
         try:
             repo = self.github.get_repo(f"{owner}/{name}")
             runs = []
-            
+
             if workflow_id:
                 workflow = repo.get_workflow(int(workflow_id))
                 workflow_runs = workflow.get_runs()
             else:
                 workflow_runs = repo.get_workflow_runs()
-            
+
             count = 0
             for run in workflow_runs:
                 if count >= limit:
                     break
-                
+
                 # Map GitHub workflow run status to our WorkflowStatus enum
                 if run.status == "completed":
                     status = WorkflowStatus.COMPLETED
@@ -204,7 +206,7 @@ class GitHubService:
                     status = WorkflowStatus.QUEUED
                 else:
                     status = WorkflowStatus.ACTIVE
-                
+
                 runs.append(WorkflowRun(
                     id=str(run.id),
                     workflow_id=str(run.workflow_id),
@@ -218,24 +220,24 @@ class GitHubService:
                     api_url=run.url
                 ))
                 count += 1
-            
+
             return runs
         except Exception as e:
             print(f"Error getting workflow runs: {e}")
             return []
-    
-    async def trigger_workflow(self, owner: str, name: str, workflow_id: str, 
+
+    async def trigger_workflow(self, owner: str, name: str, workflow_id: str,
                              ref: Optional[str] = None, inputs: Optional[Dict[str, Any]] = None) -> bool:
         """
         Trigger a workflow
-        
+
         Args:
             owner: Repository owner
             name: Repository name
             workflow_id: Workflow ID
             ref: Git reference (branch, tag, commit)
             inputs: Workflow inputs
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -243,26 +245,26 @@ class GitHubService:
             # Use PR-Agent's github_action_runner functionality
             repo = self.github.get_repo(f"{owner}/{name}")
             workflow = repo.get_workflow(int(workflow_id))
-            
+
             if not ref:
                 ref = repo.default_branch
-            
+
             workflow.create_dispatch(ref, inputs or {})
             return True
         except Exception as e:
             print(f"Error triggering workflow: {e}")
             return False
-    
+
     async def comment_on_pr(self, owner: str, name: str, pr_number: int, comment: str) -> bool:
         """
         Add a comment to a pull request
-        
+
         Args:
             owner: Repository owner
             name: Repository name
             pr_number: Pull request number
             comment: Comment text
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -275,16 +277,16 @@ class GitHubService:
         except Exception as e:
             print(f"Error commenting on PR: {e}")
             return False
-    
+
     async def get_pr_files(self, owner: str, name: str, pr_number: int) -> List[Dict[str, Any]]:
         """
         Get files changed in a pull request
-        
+
         Args:
             owner: Repository owner
             name: Repository name
             pr_number: Pull request number
-            
+
         Returns:
             List of file information dictionaries
         """
@@ -293,7 +295,7 @@ class GitHubService:
             pr_url = f"https://github.com/{owner}/{name}/pull/{pr_number}"
             github_provider = self.get_pr_agent_github_provider(pr_url)
             files = github_provider.get_files()
-            
+
             result = []
             for file in files:
                 result.append({
@@ -306,7 +308,7 @@ class GitHubService:
                     "raw_url": file.raw_url,
                     "contents_url": file.contents_url
                 })
-            
+
             return result
         except Exception as e:
             print(f"Error getting PR files: {e}")

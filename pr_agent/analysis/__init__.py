@@ -9,4 +9,3 @@ from pr_agent.analysis.pr_analyzer import PRAnalyzer
 from pr_agent.analysis.rule_engine import Rule, RuleEngine
 
 __all__ = ["AnalysisContext", "PRAnalyzer", "RuleEngine", "Rule"]
-

@@ -33,4 +33,3 @@ class CliArgs:
             return True, ""
         except Exception as e:
             return False, str(e)
-

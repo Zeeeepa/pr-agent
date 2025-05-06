@@ -140,4 +140,3 @@ class RuleEngine:
                 self.logger.info(f"Skipping rule: {rule.rule_id}")
 
         return results
-

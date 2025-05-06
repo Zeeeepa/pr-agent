@@ -194,4 +194,3 @@ class TestLoadLargeDiff:
         assert load_large_diff("test.py", None, None) == ""
         assert (load_large_diff("test.py", "content\n", "") ==
                 '--- \n+++ \n@@ -1 +1 @@\n-\n+content\n')
-

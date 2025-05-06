@@ -111,4 +111,3 @@ class AnalysisContext:
             Dictionary of rule IDs to results
         """
         return self.results
-

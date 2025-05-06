@@ -81,4 +81,3 @@ class FileSizeRule(Rule):
             file_size_kb = len(file.head_file) / 1024
 
         return file_size_kb > self.max_file_size_kb
-

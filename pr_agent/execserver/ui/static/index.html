@@ -213,7 +213,7 @@
 <body>
     <div class="container">
         <h1 class="mb-4">PR-Agent Dashboard</h1>
-        
+
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div></div>
             <div>
@@ -225,7 +225,7 @@
                 </button>
             </div>
         </div>
-        
+
         <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home" type="button" role="tab" aria-controls="home" aria-selected="true">Home</button>
@@ -240,7 +240,7 @@
                 <button class="nav-link" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat" type="button" role="tab" aria-controls="chat" aria-selected="false">AI Assistant</button>
             </li>
         </ul>
-        
+
         <div class="tab-content" id="myTabContent">
             <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
                 <div class="row">
@@ -267,7 +267,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Recent Events Section (Moved from separate tab) -->
                 <div class="row mt-4">
                     <div class="col-md-12">
@@ -326,7 +326,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row mt-4">
                     <div class="col-md-12">
                         <div class="card">
@@ -343,7 +343,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Event Flow Visualization -->
                 <div class="row mt-4">
                     <div class="col-md-12">
@@ -367,13 +367,13 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="tab-pane fade" id="triggers" role="tabpanel" aria-labelledby="triggers-tab">
                 <div class="d-flex justify-content-between mb-3">
                     <h3>Event Triggers</h3>
                     <button class="btn btn-primary" id="create-trigger-btn">Create New Trigger</button>
                 </div>
-                
+
                 <!-- Trigger Filter Controls -->
                 <div class="card mb-3">
                     <div class="card-body">
@@ -409,7 +409,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-body">
                         <table class="table" id="triggers-table">
@@ -441,7 +441,7 @@
                                         <button class="btn btn-sm btn-outline-danger">Disable</button>
                                     </td>
                                 </tr>
-                                
+
                                 <!-- CI Workflow Trigger with Interconnection -->
                                 <tr>
                                     <td>CI Workflow Trigger</td>
@@ -459,7 +459,7 @@
                                         <button class="btn btn-sm btn-outline-danger">Disable</button>
                                     </td>
                                 </tr>
-                                
+
                                 <!-- Issue Comment Trigger -->
                                 <tr>
                                     <td>Issue Comment Trigger</td>
@@ -476,7 +476,7 @@
                         </table>
                     </div>
                 </div>
-                
+
                 <!-- Trigger Connections Visualization -->
                 <div class="card mt-4">
                     <div class="card-header">
@@ -490,10 +490,10 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="tab-pane fade" id="workflows" role="tabpanel" aria-labelledby="workflows-tab">
                 <h3 class="mb-3">GitHub Workflow Management</h3>
-                
+
                 <div class="card mb-4">
                     <div class="card-header d-flex justify-content-between">
                         <span>Active Workflows</span>
@@ -545,7 +545,7 @@
                         </table>
                     </div>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-header">
                         Recent Workflow Runs
@@ -594,7 +594,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- AI Assistant Chat Tab -->
 
             <div class="tab-pane fade" id="chat" role="tabpanel" aria-labelledby="chat-tab">
@@ -602,7 +602,7 @@
                     <h3>Chat with AI Human Agent</h3>
                     <button class="btn btn-outline-secondary">Clear Conversation</button>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-body">
                         <div class="chat-container">
@@ -622,7 +622,7 @@
                                 Does this cover your requirements? Would you like to add anything else?
                             </div>
                         </div>
-                        
+
                         <div class="input-group">
                             <input type="text" class="form-control" placeholder="Type your message here...">
                             <button class="btn btn-primary">Send</button>
@@ -630,7 +630,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="tab-pane fade" id="requirements" role="tabpanel" aria-labelledby="requirements-tab">
                 <div class="d-flex justify-content-between mb-3">
                     <h3>Project Requirements</h3>
@@ -639,7 +639,7 @@
                         <button class="btn btn-outline-secondary">Edit</button>
                     </div>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-body">
                         <table class="table">
@@ -719,14 +719,14 @@
                         </table>
                     </div>
                 </div>
-                
+
                 <div class="d-grid gap-2 mt-3">
                     <button class="btn btn-primary">Ask AI to Generate Tasks</button>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <!-- Settings dialog -->
     <div id="settings-dialog" class="settings-dialog">
         <div class="settings-dialog-content">
@@ -772,7 +772,7 @@
             </div>
         </div>
     </div>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/event-system.js"></script>
     <script>
@@ -784,68 +784,68 @@
             const validateBtn = document.getElementById('validate-settings');
             const saveBtn = document.getElementById('save-settings');
             const validationMessage = document.getElementById('validation-message');
-            
-            const savedTheme = localStorage.getItem('theme') || 
+
+            const savedTheme = localStorage.getItem('theme') ||
                 (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-            
+
             if (savedTheme === 'dark') {
                 document.documentElement.setAttribute('data-theme', 'dark');
                 themeIcon.textContent = '☀️';
             }
-            
+
             const loadSettings = () => {
                 const githubApiKey = localStorage.getItem('github-api-key') || '';
                 const supabaseUrl = localStorage.getItem('supabase-url') || '';
                 const supabaseApiKey = localStorage.getItem('supabase-api-key') || '';
-                
+
                 document.getElementById('github-api-key').value = githubApiKey;
                 document.getElementById('supabase-url').value = supabaseUrl;
                 document.getElementById('supabase-api-key').value = supabaseApiKey;
             };
-            
+
             loadSettings();
-            
+
             themeToggleBtn.addEventListener('click', function() {
                 const currentTheme = document.documentElement.getAttribute('data-theme');
                 const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                
+
                 document.documentElement.setAttribute('data-theme', newTheme);
                 localStorage.setItem('theme', newTheme);
-                
+
                 if (newTheme === 'dark') {
                     themeIcon.textContent = '☀️';
                 } else {
                     themeIcon.textContent = '🌙';
                 }
             });
-            
+
             themeToggleBtn.addEventListener('dblclick', function(e) {
                 e.preventDefault();
                 settingsDialog.style.display = 'flex';
             });
-            
+
             settingsCloseBtn.addEventListener('click', function() {
                 settingsDialog.style.display = 'none';
             });
-            
+
             settingsDialog.addEventListener('click', function(e) {
                 if (e.target === settingsDialog) {
                     settingsDialog.style.display = 'none';
                 }
             });
-            
+
             validateBtn.addEventListener('click', async function() {
                 const githubApiKey = document.getElementById('github-api-key').value;
                 const supabaseUrl = document.getElementById('supabase-url').value;
                 const supabaseApiKey = document.getElementById('supabase-api-key').value;
-                
+
                 if (!githubApiKey || !supabaseUrl || !supabaseApiKey) {
                     validationMessage.textContent = 'Error: All fields are required';
                     validationMessage.className = 'validation-message validation-error';
                     validationMessage.style.display = 'block';
                     return;
                 }
-                
+
                 try {
                     // Send settings to backend for validation
                     const response = await fetch('/api/v1/settings', {
@@ -859,7 +859,7 @@
                             'SUPABASE_ANON_KEY': supabaseApiKey
                         }),
                     });
-                    
+
                     if (response.ok) {
                         validationMessage.textContent = 'Verified! All credentials are valid';
                         validationMessage.className = 'validation-message validation-success';
@@ -876,17 +876,17 @@
                     validationMessage.style.display = 'block';
                 }
             });
-            
+
             saveBtn.addEventListener('click', async function() {
                 const githubApiKey = document.getElementById('github-api-key').value;
                 const supabaseUrl = document.getElementById('supabase-url').value;
                 const supabaseApiKey = document.getElementById('supabase-api-key').value;
-                
+
                 // Save to localStorage
                 localStorage.setItem('github-api-key', githubApiKey);
                 localStorage.setItem('supabase-url', supabaseUrl);
                 localStorage.setItem('supabase-api-key', supabaseApiKey);
-                
+
                 try {
                     // Also save to backend
                     const response = await fetch('/api/v1/settings', {
@@ -900,12 +900,12 @@
                             'SUPABASE_ANON_KEY': supabaseApiKey
                         }),
                     });
-                    
+
                     if (response.ok) {
                         validationMessage.textContent = 'Settings saved successfully';
                         validationMessage.className = 'validation-message validation-success';
                         validationMessage.style.display = 'block';
-                        
+
                         setTimeout(() => {
                             validationMessage.style.display = 'none';
                         }, 2000);

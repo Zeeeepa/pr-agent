@@ -51,7 +51,7 @@ If the script doesn't work for any reason, you can manually create the functions
 
 ```sql
 -- Function to create a table if it doesn't exist
-CREATE OR REPLACE FUNCTION public.create_table_if_not_exists(table_name text, columns text) 
+CREATE OR REPLACE FUNCTION public.create_table_if_not_exists(table_name text, columns text)
 RETURNS void AS $$
 BEGIN
     EXECUTE format('CREATE TABLE IF NOT EXISTS %I (%s)', table_name, columns);
@@ -59,7 +59,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Function to execute arbitrary SQL
-CREATE OR REPLACE FUNCTION public.exec_sql(sql text) 
+CREATE OR REPLACE FUNCTION public.exec_sql(sql text)
 RETURNS void AS $$
 BEGIN
     EXECUTE sql;
@@ -67,7 +67,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Function to drop a table if it exists
-CREATE OR REPLACE FUNCTION public.drop_table_if_exists(table_name text) 
+CREATE OR REPLACE FUNCTION public.drop_table_if_exists(table_name text)
 RETURNS void AS $$
 BEGIN
     EXECUTE format('DROP TABLE IF EXISTS %I', table_name);

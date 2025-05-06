@@ -958,4 +958,3 @@ class PRCodeSuggestions:
             get_logger().info(f"Could not reflect on suggestions, error: {e}")
             return ""
         return response_reflect
-
