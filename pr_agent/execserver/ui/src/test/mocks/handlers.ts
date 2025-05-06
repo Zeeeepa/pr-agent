@@ -1,114 +1,42 @@
 import { rest } from 'msw';
 
-// Define handlers for mocking API responses
 export const handlers = [
-  // Mock the settings endpoint
-  rest.get('/api/v1/settings', (req, res, ctx) => {
-    return res(
-      ctx.status(200),
-      ctx.json({
-        GITHUB_TOKEN: '********',
-        SUPABASE_URL: 'https://example.supabase.co',
-        SUPABASE_ANON_KEY: '********',
-      })
-    );
-  }),
-
-  // Mock the database status endpoint
-  rest.get('/api/v1/database/status', (req, res, ctx) => {
-    return res(
-      ctx.status(200),
-      ctx.json({
-        status: 'connected',
-      })
-    );
-  }),
-
-  // Mock the events endpoint
+  // Mock API endpoints
   rest.get('/api/v1/events', (req, res, ctx) => {
     return res(
       ctx.status(200),
       ctx.json([
         {
           id: '1',
-          event_type: 'pull_request',
-          repository: 'owner/repo',
-          created_at: '2023-01-01T12:00:00Z',
-          processed: true,
-        },
-        {
-          id: '2',
-          event_type: 'push',
-          repository: 'owner/repo',
-          created_at: '2023-01-01T11:00:00Z',
-          processed: false,
-        },
+          type: 'pull_request',
+          action: 'opened',
+          title: 'Test PR',
+          url: 'https://github.com/test/repo/pull/1',
+          created_at: '2025-05-06T04:30:00Z'
+        }
       ])
     );
   }),
-
-  // Mock the triggers endpoint
-  rest.get('/api/v1/triggers', (req, res, ctx) => {
-    return res(
-      ctx.status(200),
-      ctx.json([
-        {
-          id: '1',
-          name: 'PR Review Trigger',
-          project_id: 'project1',
-          enabled: true,
-          conditions: [
-            {
-              event_type: 'pull_request',
-              condition: { action: 'opened' },
-            },
-          ],
-          actions: [
-            {
-              action_type: 'pr_comment',
-              config: { message: 'PR received for review' },
-            },
-          ],
-        },
-      ])
-    );
-  }),
-
-  // Mock the workflows endpoint
-  rest.get('/api/v1/workflows', (req, res, ctx) => {
-    return res(
-      ctx.status(200),
-      ctx.json([
-        {
-          id: '1',
-          name: 'CI',
-          path: '.github/workflows/ci.yml',
-          state: 'active',
-        },
-      ])
-    );
-  }),
-
-  // Mock the validate settings endpoint
-  rest.post('/api/v1/settings/validate', (req, res, ctx) => {
+  
+  rest.get('/api/v1/status', (req, res, ctx) => {
     return res(
       ctx.status(200),
       ctx.json({
-        valid: true,
-        message: 'Settings validated successfully',
+        status: 'healthy',
+        version: '1.0.0',
+        uptime: 3600
       })
     );
   }),
-
-  // Mock the save settings endpoint
+  
   rest.post('/api/v1/settings', (req, res, ctx) => {
     return res(
       ctx.status(200),
       ctx.json({
-        status: 'success',
-        message: 'Settings saved successfully',
+        success: true,
+        message: 'Settings updated successfully'
       })
     );
-  }),
+  })
 ];
 
