@@ -226,23 +226,23 @@
             </div>
         </div>
         
-        <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home" type="button" role="tab" aria-controls="home" aria-selected="true">Home</button>
+        <ul class="nav nav-tabs mb-4" id="myTab">
+            <li class="nav-item">
+                <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home" type="button">Home</button>
             </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="triggers-tab" data-bs-toggle="tab" data-bs-target="#triggers" type="button" role="tab" aria-controls="triggers" aria-selected="false">Event Triggers</button>
+            <li class="nav-item">
+                <button class="nav-link" id="triggers-tab" data-bs-toggle="tab" data-bs-target="#triggers" type="button">Event Triggers</button>
             </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="workflows-tab" data-bs-toggle="tab" data-bs-target="#workflows" type="button" role="tab" aria-controls="workflows" aria-selected="false">GitHub Workflows</button>
+            <li class="nav-item">
+                <button class="nav-link" id="workflows-tab" data-bs-toggle="tab" data-bs-target="#workflows" type="button">GitHub Workflows</button>
             </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat" type="button" role="tab" aria-controls="chat" aria-selected="false">AI Assistant</button>
+            <li class="nav-item">
+                <button class="nav-link" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat" type="button">AI Assistant</button>
             </li>
         </ul>
         
         <div class="tab-content" id="myTabContent">
-            <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
+            <div class="tab-pane fade show active" id="home">
                 <div class="row">
                     <div class="col-md-6">
                         <div class="card">
@@ -368,7 +368,7 @@
                 </div>
             </div>
             
-            <div class="tab-pane fade" id="triggers" role="tabpanel" aria-labelledby="triggers-tab">
+            <div class="tab-pane fade" id="triggers">
                 <div class="d-flex justify-content-between mb-3">
                     <h3>Event Triggers</h3>
                     <button class="btn btn-primary" id="create-trigger-btn">Create New Trigger</button>
@@ -491,7 +491,7 @@
                 </div>
             </div>
             
-            <div class="tab-pane fade" id="workflows" role="tabpanel" aria-labelledby="workflows-tab">
+            <div class="tab-pane fade" id="workflows">
                 <h3 class="mb-3">GitHub Workflow Management</h3>
                 
                 <div class="card mb-4">
@@ -597,7 +597,7 @@
             
             <!-- AI Assistant Chat Tab -->
 
-            <div class="tab-pane fade" id="chat" role="tabpanel" aria-labelledby="chat-tab">
+            <div class="tab-pane fade" id="chat">
                 <div class="d-flex justify-content-between mb-3">
                     <h3>Chat with AI Human Agent</h3>
                     <button class="btn btn-outline-secondary">Clear Conversation</button>
@@ -631,7 +631,7 @@
                 </div>
             </div>
             
-            <div class="tab-pane fade" id="requirements" role="tabpanel" aria-labelledby="requirements-tab">
+            <div class="tab-pane fade" id="requirements">
                 <div class="d-flex justify-content-between mb-3">
                     <h3>Project Requirements</h3>
                     <div>
@@ -753,11 +753,11 @@
                 <div id="validation-message" class="validation-message"></div>
                 <div class="settings-dialog-footer">
                     <button id="validate-settings" class="btn btn-info">
-                        <span id="validate-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        <span id="validate-spinner" class="spinner-border spinner-border-sm d-none"></span>
                         Validate
                     </button>
                     <button id="save-settings" class="btn btn-primary">
-                        <span id="save-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        <span id="save-spinner" class="spinner-border spinner-border-sm d-none"></span>
                         Save
                     </button>
                 </div>
@@ -765,7 +765,7 @@
                     <h5>Database Status</h5>
                     <div id="migration-info"></div>
                     <button id="apply-migrations" class="btn btn-sm btn-warning mt-2 d-none">
-                        <span id="migration-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        <span id="migration-spinner" class="spinner-border spinner-border-sm d-none"></span>
                         Apply Migrations
                     </button>
                 </div>
