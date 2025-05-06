@@ -11,9 +11,10 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: 'dist',
+    outDir: path.resolve(__dirname, 'static'),
     emptyOutDir: true,
     sourcemap: true,
+    assetsDir: 'assets',
   },
   server: {
     port: 3000,

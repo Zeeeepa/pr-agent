@@ -9,10 +9,11 @@ import os
 import asyncio
 from typing import Dict, Any, Optional
 from pathlib import Path
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
+from fastapi.middleware.gzip import GZipMiddleware
 
 from pr_agent.execserver.api.routes import router as api_router
 from pr_agent.execserver.config import (
@@ -58,6 +59,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add GZip compression middleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 # Add correlation ID middleware
 @app.middleware("http")
 async def add_correlation_id(request: Request, call_next):
@@ -94,6 +98,25 @@ async def add_correlation_id(request: Request, call_next):
     finally:
         # Clear the request context
         RequestContext.clear()
+
+# Add caching middleware for static assets
+@app.middleware("http")
+async def add_cache_headers(request: Request, call_next):
+    """Add cache headers to static asset responses."""
+    response = await call_next(request)
+    
+    # Add cache headers for static assets
+    path = request.url.path
+    if path.startswith("/assets/") or path.endswith((".js", ".css", ".woff2", ".woff", ".ttf", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico")):
+        # Cache for 1 week (604800 seconds)
+        response.headers["Cache-Control"] = "public, max-age=604800, immutable"
+    elif path.endswith(".html"):
+        # No caching for HTML files
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    
+    return response
 
 # Add error handling middleware
 @app.exception_handler(PRAgentError)
@@ -139,9 +162,54 @@ async def general_exception_handler(request: Request, exc: Exception):
 # Include API routes
 app.include_router(api_router)
 
-# Mount static files for UI
+# Define static files directory
 static_dir = Path(__file__).parent / "ui" / "static"
-app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
+
+# Mount static files for assets (JS, CSS, images, etc.)
+app.mount("/assets", StaticFiles(directory=str(static_dir / "assets"), check_dir=False), name="assets")
+app.mount("/js", StaticFiles(directory=str(static_dir / "js")), name="js")
+
+# Serve favicon.ico
+@app.get("/favicon.ico")
+async def get_favicon():
+    favicon_path = static_dir / "favicon.ico"
+    if favicon_path.exists():
+        return FileResponse(favicon_path)
+    else:
+        return Response(status_code=404)
+
+# Serve index.html for all other routes (SPA routing)
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    # Exclude API routes
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="Not Found")
+    
+    index_path = static_dir / "index.html"
+    
+    if not index_path.exists():
+        structured_log(
+            f"Error: index.html not found at {index_path}",
+            level="error",
+        )
+        return HTMLResponse(
+            content=f"""
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>Error - Asset Not Found</title>
+                </head>
+                <body>
+                    <h1>Error: Frontend assets not found</h1>
+                    <p>The application's frontend assets could not be located. Please ensure the React application has been built.</p>
+                    <p>Expected path: {index_path}</p>
+                </body>
+            </html>
+            """,
+            status_code=500
+        )
+    
+    return FileResponse(index_path)
 
 # Health check endpoint
 @app.get("/health")

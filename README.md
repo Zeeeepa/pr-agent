@@ -267,6 +267,56 @@ https://openai.com/enterprise-privacy
 
 - The [Qodo Merge Chrome extension](https://chromewebstore.google.com/detail/qodo-merge-ai-powered-cod/ephlnjeghhogofkifjloamocljapahnl) serves solely to modify the visual appearance of a GitHub PR screen. It does not transmit any user's repo or pull request code. Code is only sent for processing when a user submits a GitHub comment that activates a PR-Agent tool, in accordance with the standard privacy policy of Qodo-Merge.
 
+## Frontend UI
+
+PR-Agent includes a web-based dashboard UI for managing and monitoring GitHub workflow automation. The UI is built with React, TypeScript, and Vite, and is served by the FastAPI backend.
+
+### Building the Frontend
+
+To build the frontend UI:
+
+```bash
+# Navigate to the UI directory
+cd pr_agent/execserver/ui
+
+# Install dependencies
+npm install
+
+# Build the UI
+npm run build
+# Or use the build script
+./build.sh
+```
+
+The build output will be placed in the `static` directory, which is served by the FastAPI backend.
+
+### Running the UI
+
+The UI is automatically served by the FastAPI backend when you run the ExeServer:
+
+```bash
+# Set environment variables
+export SUPABASE_URL=your_supabase_url
+export SUPABASE_ANON_KEY=your_supabase_anon_key
+export GITHUB_TOKEN=your_github_token
+
+# Run the server
+python -m pr_agent.execserver.app
+```
+
+Then access the UI at http://localhost:8000
+
+### Development Mode
+
+For frontend development, you can run the UI in development mode:
+
+```bash
+cd pr_agent/execserver/ui
+npm run dev
+```
+
+This will start the development server at http://localhost:3000 with hot reloading enabled.
+
 ## Contributing
 
 To contribute to the project, get started by reading our [Contributing Guide](https://github.com/qodo-ai/pr-agent/blob/b09eec265ef7d36c232063f76553efb6b53979ff/CONTRIBUTING.md).
@@ -278,3 +328,4 @@ To contribute to the project, get started by reading our [Contributing Guide](ht
 - Blog: https://www.qodo.ai/blog/
 - Troubleshooting: https://www.qodo.ai/blog/technical-faq-and-troubleshooting/
 - Support: support@qodo.ai
+</initial_code>
