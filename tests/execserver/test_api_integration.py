@@ -1,7 +1,8 @@
-import pytest
-import httpx
 import asyncio
-from typing import Dict, Any
+from typing import Any, Dict
+
+import httpx
+import pytest
 
 # Base URL for the API
 BASE_URL = "http://localhost:8000"
@@ -41,7 +42,7 @@ async def test_github_webhook_endpoint():
             "full_name": "test/repo"
         }
     }
-    
+
     # Send the event to the webhook endpoint
     async with httpx.AsyncClient() as client:
         response = await client.post(

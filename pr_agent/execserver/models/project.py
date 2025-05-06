@@ -1,4 +1,5 @@
 from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -13,7 +14,7 @@ class Project(BaseModel):
     html_url: str = Field(..., description="URL to the project on GitHub")
     api_url: str = Field(..., description="GitHub API URL for the project")
     default_branch: str = Field(..., description="Default branch of the repository")
-    
+
     class Config:
         schema_extra = {
             "example": {

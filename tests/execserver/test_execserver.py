@@ -1,9 +1,10 @@
+import asyncio
+import json
 import os
 import sys
 import unittest
-import json
-import asyncio
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
 from fastapi.testclient import TestClient
 
 # Add the parent directory to the path so we can import the module
@@ -12,8 +13,12 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 from pr_agent.execserver.app import app
 from pr_agent.execserver.models.event import Event
 from pr_agent.execserver.models.project import Project
-from pr_agent.execserver.models.trigger import Trigger, TriggerCondition, TriggerAction, EventType, TriggerType
-from pr_agent.execserver.models.workflow import Workflow, WorkflowRun, WorkflowStatus, WorkflowTrigger
+from pr_agent.execserver.models.trigger import (EventType, Trigger,
+                                                TriggerAction,
+                                                TriggerCondition, TriggerType)
+from pr_agent.execserver.models.workflow import (Workflow, WorkflowRun,
+                                                 WorkflowStatus,
+                                                 WorkflowTrigger)
 
 
 class TestExeServer(unittest.TestCase):
@@ -181,28 +186,29 @@ class TestExeServer(unittest.TestCase):
     @patch('pr_agent.execserver.services.workflow_service.run_action')
     def test_execute_github_action(self, mock_run_action):
         """Test the execute_github_action method"""
-        from pr_agent.execserver.services.workflow_service import WorkflowService
-        
+        from pr_agent.execserver.services.workflow_service import \
+            WorkflowService
+
         # Mock the run_action function
         mock_run_action.return_value = None
-        
+
         # Create a workflow service instance
         workflow_service = WorkflowService()
-        
+
         # Test inputs
         repository = "owner/repo"
         action_name = "test-action"
         inputs = {"param1": "value1", "param2": "value2"}
-        
+
         # Call the method
         result = asyncio.run(workflow_service.execute_github_action(repository, action_name, inputs))
-        
+
         # Check the result
         self.assertTrue(result)
-        
+
         # Check that run_action was called
         mock_run_action.assert_called_once()
-        
+
         # Check that environment variables were set correctly
         self.assertEqual(os.environ["GITHUB_REPOSITORY"], repository)
         self.assertEqual(os.environ["GITHUB_EVENT_NAME"], "workflow_dispatch")

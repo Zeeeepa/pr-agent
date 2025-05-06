@@ -11,11 +11,11 @@ This project extends the PR-Agent functionality to create a dashboard that allow
 ## Existing PR-Agent Components to Leverage
 
 ### GitHub Integration
-- `pr_agent.servers.github_app`: 
+- `pr_agent.servers.github_app`:
   - `handle_github_webhooks` - Process incoming GitHub webhook events
   - `handle_marketplace_webhooks` - Handle marketplace events
   - `handle_comments_on_pr` - Process comments on PRs
-  
+
 - `pr_agent.servers.github_action_runner`:
   - `get_setting_or_env` - Get settings from environment variables
   - `run_action` - Run GitHub actions
@@ -25,7 +25,7 @@ This project extends the PR-Agent functionality to create a dashboard that allow
 
 - `pr_agent.git_providers.github_provider`:
   - `GithubProvider` class - Interface with GitHub API
-  
+
 - `pr_agent.git_providers.git_provider`:
   - `GitProvider` class - Base class for Git providers
 
@@ -67,7 +67,7 @@ ExeServer/
 - Implement serverless functionality similar to PR-Agent
 
 ### 2. Dashboard Components
-- **Event Trigger**: 
+- **Event Trigger**:
   - Select project from user's GitHub repositories
   - Select event type from GitHub events list
   - Configure trigger conditions
