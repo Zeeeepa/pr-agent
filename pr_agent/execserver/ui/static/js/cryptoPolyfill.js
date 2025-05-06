@@ -48,33 +48,31 @@ export const createHash = (algorithm) => {
         digest: (encoding = 'hex') => {
           // Use Web Crypto API if available
           if (window.crypto && window.crypto.subtle) {
-            try {
-              // Return a promise that resolves to the hash
-              return window.crypto.subtle.digest(webCryptoAlgorithm, data)
-                .then(hashBuffer => {
-                  // Convert ArrayBuffer to hex string
-                  const hashArray = Array.from(new Uint8Array(hashBuffer));
-                  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-                  
-                  // Handle different encodings
-                  if (encoding === 'hex') {
-                    return hashHex;
-                  } else if (encoding === 'base64') {
-                    // Convert hex to base64
-                    return btoa(hashArray.map(b => String.fromCharCode(b)).join(''));
-                  } else {
-                    return hashHex; // Default to hex
-                  }
-                });
-            } catch (e) {
-              console.error('Web Crypto API failed:', e);
-              // Fall back to a simple hash for demo purposes
-              return `browser-crypto-polyfill-hash-${algorithm}-${Date.now()}`;
-            }
+            return window.crypto.subtle.digest(webCryptoAlgorithm, data)
+              .then(hashBuffer => {
+                // Convert ArrayBuffer to hex string
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                
+                // Handle different encodings
+                if (encoding === 'hex') {
+                  return hashHex;
+                } else if (encoding === 'base64') {
+                  // Convert hex to base64
+                  return btoa(hashArray.map(b => String.fromCharCode(b)).join(''));
+                } else {
+                  return hashHex; // Default to hex
+                }
+              })
+              .catch(e => {
+                console.error('Web Crypto API failed:', e);
+                // Fall back to a simple hash for demo purposes
+                return Promise.resolve(`browser-crypto-polyfill-hash-${algorithm}-${Date.now()}`);
+              });
           } else {
             // Fallback for browsers without Web Crypto API
             console.warn('Web Crypto API not available, using fallback hash');
-            return `browser-crypto-polyfill-hash-${algorithm}-${Date.now()}`;
+            return Promise.resolve(`browser-crypto-polyfill-hash-${algorithm}-${Date.now()}`);
           }
         }
       };
@@ -106,3 +104,4 @@ const browserCrypto = {
 };
 
 export default browserCrypto;
+
