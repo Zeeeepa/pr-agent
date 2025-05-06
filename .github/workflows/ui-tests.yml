@@ -1,0 +1,113 @@
+name: UI Tests
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'pr_agent/execserver/ui/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'pr_agent/execserver/ui/**'
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: pr_agent/execserver/ui/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: pr_agent/execserver/ui
+        run: npm ci
+      
+      - name: Run linting
+        working-directory: pr_agent/execserver/ui
+        run: npm run lint
+      
+      - name: Run unit tests
+        working-directory: pr_agent/execserver/ui
+        run: npm run test:coverage
+      
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          directory: pr_agent/execserver/ui/coverage
+          flags: ui-unit-tests
+  
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: pr_agent/execserver/ui/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: pr_agent/execserver/ui
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        working-directory: pr_agent/execserver/ui
+        run: npx playwright install --with-deps
+      
+      - name: Run Playwright tests
+        working-directory: pr_agent/execserver/ui
+        run: npm run test:e2e
+      
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report
+          path: pr_agent/execserver/ui/playwright-report/
+          retention-days: 30
+  
+  visual-tests:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: pr_agent/execserver/ui/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: pr_agent/execserver/ui
+        run: npm ci
+      
+      - name: Build Storybook
+        working-directory: pr_agent/execserver/ui
+        run: npm run build-storybook
+      
+      - name: Run Storybook tests
+        working-directory: pr_agent/execserver/ui
+        run: npm run test:visual
+      
+      - name: Publish to Chromatic
+        if: github.event_name == 'pull_request'
+        working-directory: pr_agent/execserver/ui
+        run: npm run chromatic -- --project-token=${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+        env:
+          CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+
