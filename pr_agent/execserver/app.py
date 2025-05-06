@@ -163,11 +163,10 @@ async def general_exception_handler(request: Request, exc: Exception):
 app.include_router(api_router)
 
 # Define static files directory
-static_dir = Path(__file__).parent / "ui" / "static"
+static_dir = Path(__file__).parent / "ui" / "dist"
 
 # Mount static files for assets (JS, CSS, images, etc.)
 app.mount("/assets", StaticFiles(directory=str(static_dir / "assets"), check_dir=False), name="assets")
-app.mount("/js", StaticFiles(directory=str(static_dir / "js")), name="js")
 
 # Serve favicon.ico
 @app.get("/favicon.ico")

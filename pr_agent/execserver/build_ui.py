@@ -17,7 +17,7 @@ def main():
     # Get the directory of this script
     script_dir = Path(__file__).parent.absolute()
     ui_dir = script_dir / "ui"
-    static_dir = ui_dir / "static"
+    dist_dir = ui_dir / "dist"
     
     print(f"Building PR-Agent UI in {ui_dir}")
     
@@ -51,18 +51,18 @@ def main():
         print(f"Error building the UI: {e}")
         sys.exit(1)
     
-    # Ensure the static directory exists
-    static_dir.mkdir(exist_ok=True)
+    # Ensure the dist directory exists
+    dist_dir.mkdir(exist_ok=True)
     
     # Ensure the assets directory exists
-    assets_dir = static_dir / "assets"
+    assets_dir = dist_dir / "assets"
     assets_dir.mkdir(exist_ok=True)
     
     # Create a .gitkeep file in the assets directory to ensure it's tracked by git
     (assets_dir / ".gitkeep").touch()
     
     # Copy favicon if it doesn't exist in the output
-    favicon_path = static_dir / "favicon.ico"
+    favicon_path = dist_dir / "favicon.ico"
     if not favicon_path.exists():
         src_favicon = ui_dir / "src" / "favicon.ico"
         if src_favicon.exists():
@@ -76,4 +76,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

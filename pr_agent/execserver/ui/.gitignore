@@ -3,22 +3,22 @@ node_modules/
 
 # Build artifacts
 dist/
-static/assets/*
-!static/assets/.gitkeep
-static/*.js
-static/*.css
-static/*.html
-static/*.map
-static/*.ico
-static/*.svg
-static/*.png
-static/*.jpg
-static/*.jpeg
-static/*.gif
-static/*.woff
-static/*.woff2
-static/*.ttf
-static/*.eot
+dist/assets/*
+!dist/assets/.gitkeep
+dist/*.js
+dist/*.css
+dist/*.html
+dist/*.map
+dist/*.ico
+dist/*.svg
+dist/*.png
+dist/*.jpg
+dist/*.jpeg
+dist/*.gif
+dist/*.woff
+dist/*.woff2
+dist/*.ttf
+dist/*.eot
 
 # Environment files
 .env
@@ -44,4 +44,3 @@ yarn-error.log*
 # OS files
 .DS_Store
 Thumbs.db
-

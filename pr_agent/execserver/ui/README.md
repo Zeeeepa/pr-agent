@@ -37,7 +37,7 @@ npm run build
 ./build.sh
 ```
 
-The build output will be placed in the `static` directory, which is served by the FastAPI backend.
+The build output will be placed in the `dist` directory, which is served by the FastAPI backend.
 
 ## Project Structure
 
@@ -45,7 +45,7 @@ The build output will be placed in the `static` directory, which is served by th
   - `App.tsx` - Main application component
   - `main.tsx` - Entry point
   - `index.css` - Global styles
-- `static/` - Build output directory (served by FastAPI)
+- `dist/` - Build output directory (served by FastAPI)
 - `vite.config.ts` - Vite configuration
 - `tsconfig.json` - TypeScript configuration
 - `build.sh` - Build script for production
@@ -59,7 +59,6 @@ The frontend communicates with the backend API at `/api/v1/`. In development mod
 If you encounter issues with the frontend not loading properly:
 
 1. Make sure the React application is built (`npm run build`)
-2. Check that the build output is in the `static` directory
+2. Check that the build output is in the `dist` directory
 3. Verify that the FastAPI server is properly serving the static files
 4. Check the browser console for any errors
-

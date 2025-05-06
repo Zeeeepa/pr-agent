@@ -11,7 +11,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: path.resolve(__dirname, 'static'),
+    outDir: path.resolve(__dirname, 'dist'),
     emptyOutDir: true,
     sourcemap: true,
     assetsDir: 'assets',

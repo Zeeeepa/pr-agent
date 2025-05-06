@@ -16,18 +16,17 @@ npm install
 echo "Building application..."
 npm run build
 
-# Ensure static directory exists
-mkdir -p static
+# Ensure dist directory exists
+mkdir -p dist
 
 # Copy favicon if it doesn't exist in the output
-if [ ! -f static/favicon.ico ]; then
+if [ ! -f dist/favicon.ico ]; then
   echo "Adding favicon.ico..."
-  cp -f $(dirname "$0")/src/favicon.ico static/ 2>/dev/null || echo "No favicon found to copy"
+  cp -f $(dirname "$0")/src/favicon.ico dist/ 2>/dev/null || echo "No favicon found to copy"
 fi
 
 # Create a .gitkeep file in the assets directory to ensure it's tracked by git
-mkdir -p static/assets
-touch static/assets/.gitkeep
+mkdir -p dist/assets
+touch dist/assets/.gitkeep
 
 echo "Build completed successfully!"
-

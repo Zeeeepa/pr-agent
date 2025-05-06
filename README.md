@@ -288,7 +288,7 @@ npm run build
 ./build.sh
 ```
 
-The build output will be placed in the `static` directory, which is served by the FastAPI backend.
+The build output will be placed in the `dist` directory, which is served by the FastAPI backend.
 
 ### Running the UI
 
@@ -328,4 +328,4 @@ To contribute to the project, get started by reading our [Contributing Guide](ht
 - Blog: https://www.qodo.ai/blog/
 - Troubleshooting: https://www.qodo.ai/blog/technical-faq-and-troubleshooting/
 - Support: support@qodo.ai
-</initial_code>
+</div>
