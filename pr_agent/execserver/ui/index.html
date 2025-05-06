@@ -275,75 +275,15 @@
                                                 <td>pull_request</td>
                                                 <td>owner/repo</td>
                                                 <td>2023-01-01 12:34:56</td>
-                                                <td><span class="status-active">Yes</span></td>
+                                                <td><span class="status-active">●</span> Yes</td>
                                                 <td>
-                                                    <button class="btn btn-sm btn-outline-info">View Details</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>push</td>
-                                                <td>owner/repo</td>
-                                                <td>2023-01-01 12:30:00</td>
-                                                <td><span class="status-active">Yes</span></td>
-                                                <td>
-                                                    <button class="btn btn-sm btn-outline-info">View Details</button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>issue_comment</td>
-                                                <td>owner/repo</td>
-                                                <td>2023-01-01 12:15:30</td>
-                                                <td><span class="status-active">Yes</span></td>
-                                                <td>
-                                                    <button class="btn btn-sm btn-outline-info">View Details</button>
+                                                    <button class="btn btn-sm btn-outline-primary">View</button>
+                                                    <button class="btn btn-sm btn-outline-danger">Delete</button>
                                                 </td>
                                             </tr>
                                         </tbody>
                                     </table>
                                 </div>
-                                <div class="d-grid gap-2 mt-3">
-                                    <button class="btn btn-outline-primary" id="load-more-events">Load More</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row mt-4">
-                    <div class="col-md-12">
-                        <div class="card">
-                            <div class="card-header">
-                                Quick Actions
-                            </div>
-                            <div class="card-body">
-                                <div class="d-flex gap-2">
-                                    <button class="btn btn-success">Create New Trigger</button>
-                                    <button class="btn btn-info">View GitHub Workflows</button>
-                                    <button class="btn btn-warning">Chat with AI Assistant</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Event Flow Visualization -->
-                <div class="row mt-4">
-                    <div class="col-md-12">
-                        <div class="card">
-                            <div class="card-header">
-                                Event Flow Visualization
-                            </div>
-                            <div class="card-body">
-                                <div class="event-flow">
-                                    <div class="card p-2">GitHub Event</div>
-                                    <div class="flow-arrow">→</div>
-                                    <div class="card p-2">Event Trigger</div>
-                                    <div class="flow-arrow">→</div>
-                                    <div class="card p-2">Action Execution</div>
-                                    <div class="flow-arrow">→</div>
-                                    <div class="card p-2">Notification</div>
-                                </div>
-                                <p class="text-muted mt-3">This visualization shows how events flow through the system. Events from GitHub trigger actions based on your configured triggers, which then execute and send notifications.</p>
                             </div>
                         </div>
                     </div>
@@ -351,107 +291,32 @@
             </div>
             
             <div class="tab-pane fade" id="triggers" role="tabpanel" aria-labelledby="triggers-tab">
-                <div class="d-flex justify-content-between mb-3">
-                    <h3>Event Triggers</h3>
-                    <button class="btn btn-primary" id="create-trigger-btn">Create New Trigger</button>
-                </div>
-                
-                <!-- Trigger Filter Controls -->
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <label for="filter-repository" class="form-label">Repository</label>
-                                <select class="form-select" id="filter-repository">
-                                    <option value="">All Repositories</option>
-                                    <option value="owner/repo">owner/repo</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="filter-event-type" class="form-label">Event Type</label>
-                                <select class="form-select" id="filter-event-type">
-                                    <option value="">All Event Types</option>
-                                    <option value="pull_request">Pull Request</option>
-                                    <option value="push">Push</option>
-                                    <option value="issue_comment">Issue Comment</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="filter-status" class="form-label">Status</label>
-                                <select class="form-select" id="filter-status">
-                                    <option value="">All Statuses</option>
-                                    <option value="active">Active</option>
-                                    <option value="inactive">Inactive</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
-                            <button class="btn btn-outline-secondary" id="reset-filters">Reset Filters</button>
-                            <button class="btn btn-primary" id="apply-filters">Apply Filters</button>
-                        </div>
-                    </div>
-                </div>
-                
+                <!-- Triggers content -->
                 <div class="card">
+                    <div class="card-header d-flex justify-content-between">
+                        <span>Configured Event Triggers</span>
+                        <button class="btn btn-sm btn-primary">Add New Trigger</button>
+                    </div>
                     <div class="card-body">
-                        <table class="table" id="triggers-table">
+                        <table class="table">
                             <thead>
                                 <tr>
                                     <th>Name</th>
-                                    <th>Project</th>
                                     <th>Event Type</th>
-                                    <th>Action</th>
+                                    <th>Repository</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- PR Comment Trigger with Interconnection -->
                                 <tr>
-                                    <td>PR Comment Trigger</td>
+                                    <td>PR Review Trigger</td>
+                                    <td>pull_request.review_requested</td>
                                     <td>owner/repo</td>
-                                    <td>pull_request.opened</td>
+                                    <td><span class="status-active">●</span> Active</td>
                                     <td>
-                                        <div>Add PR comment</div>
-                                        <div class="trigger-connection mt-2">
-                                            <span class="connection-dot"></span> Triggers: Workflow CI
-                                        </div>
-                                    </td>
-                                    <td><span class="status-active">Active</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">Edit</button>
+                                        <button class="btn btn-sm btn-outline-secondary">Edit</button>
                                         <button class="btn btn-sm btn-outline-danger">Disable</button>
-                                    </td>
-                                </tr>
-                                
-                                <!-- CI Workflow Trigger with Interconnection -->
-                                <tr>
-                                    <td>CI Workflow Trigger</td>
-                                    <td>owner/repo</td>
-                                    <td>push</td>
-                                    <td>
-                                        <div>Run GitHub workflow</div>
-                                        <div class="trigger-connection mt-2">
-                                            <span class="connection-dot"></span> Triggers: Notification
-                                        </div>
-                                    </td>
-                                    <td><span class="status-active">Active</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">Edit</button>
-                                        <button class="btn btn-sm btn-outline-danger">Disable</button>
-                                    </td>
-                                </tr>
-                                
-                                <!-- Issue Comment Trigger -->
-                                <tr>
-                                    <td>Issue Comment Trigger</td>
-                                    <td>owner/repo</td>
-                                    <td>issue_comment.created</td>
-                                    <td>Execute codefile</td>
-                                    <td><span class="status-inactive">Inactive</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">Edit</button>
-                                        <button class="btn btn-sm btn-outline-success">Enable</button>
                                     </td>
                                 </tr>
                             </tbody>
@@ -459,251 +324,104 @@
                     </div>
                 </div>
                 
-                <!-- Trigger Connections Visualization -->
                 <div class="card mt-4">
                     <div class="card-header">
-                        Trigger Connections
+                        Event Flow Visualization
                     </div>
                     <div class="card-body">
-                        <p>Visualize how your triggers are interconnected and how events flow through your system.</p>
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
-                            <button class="btn btn-outline-primary" id="view-connections">View Connections Diagram</button>
+                        <div class="event-flow">
+                            <div>
+                                <strong>GitHub Event</strong>
+                                <div>pull_request.opened</div>
+                            </div>
+                            <div class="flow-arrow">→</div>
+                            <div>
+                                <strong>Webhook</strong>
+                                <div>PR Agent API</div>
+                            </div>
+                            <div class="flow-arrow">→</div>
+                            <div>
+                                <strong>Action</strong>
+                                <div>Generate PR Summary</div>
+                            </div>
+                        </div>
+                        
+                        <div class="trigger-connection mt-4">
+                            <div class="mb-2">
+                                <span class="connection-dot"></span>
+                                <strong>Connected Repositories</strong>
+                            </div>
+                            <ul class="list-group">
+                                <li class="list-group-item bg-dark text-light border-secondary">owner/repo-1</li>
+                                <li class="list-group-item bg-dark text-light border-secondary">owner/repo-2</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
             </div>
             
             <div class="tab-pane fade" id="workflows" role="tabpanel" aria-labelledby="workflows-tab">
-                <h3 class="mb-3">GitHub Workflow Management</h3>
-                
-                <div class="card mb-4">
-                    <div class="card-header d-flex justify-content-between">
-                        <span>Active Workflows</span>
-                        <button class="btn btn-sm btn-outline-secondary">Refresh</button>
-                    </div>
-                    <div class="card-body">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Workflow</th>
-                                    <th>Repository</th>
-                                    <th>Status</th>
-                                    <th>Trigger</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>CI/CD Pipeline</td>
-                                    <td>owner/repo</td>
-                                    <td><span class="status-active">Active</span></td>
-                                    <td>Push</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">Run</button>
-                                        <button class="btn btn-sm btn-outline-info">View Runs</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Code Quality Checks</td>
-                                    <td>owner/repo</td>
-                                    <td><span class="status-active">Active</span></td>
-                                    <td>PR</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">Run</button>
-                                        <button class="btn btn-sm btn-outline-info">View Runs</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Release Workflow</td>
-                                    <td>owner/repo</td>
-                                    <td><span class="status-inactive">Inactive</span></td>
-                                    <td>Manual</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">Run</button>
-                                        <button class="btn btn-sm btn-outline-info">View Runs</button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                
+                <!-- Workflows content -->
                 <div class="card">
                     <div class="card-header">
-                        Recent Workflow Runs
+                        GitHub Workflow Integration
                     </div>
                     <div class="card-body">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Workflow</th>
-                                    <th>Trigger</th>
-                                    <th>Result</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>CI/CD Pipeline</td>
-                                    <td>Push to main</td>
-                                    <td>Success</td>
-                                    <td><span class="status-active">Complete</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-info">View Details</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Code Quality Checks</td>
-                                    <td>PR #42 created</td>
-                                    <td>Success</td>
-                                    <td><span class="status-active">Complete</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-info">View Details</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Release Workflow</td>
-                                    <td>Manual trigger</td>
-                                    <td>Failed</td>
-                                    <td><span class="status-inactive">Complete</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-info">View Details</button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <p>Connect PR-Agent with your GitHub Actions workflows to automate PR reviews and more.</p>
+                        
+                        <div class="alert alert-info">
+                            <h5>Sample Workflow</h5>
+                            <pre class="bg-dark text-light p-3 rounded"><code>name: PR Agent Review
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: PR Agent Review
+        uses: pr-agent/github-action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          action: "review"</code></pre>
+                        </div>
+                        
+                        <button class="btn btn-primary">Copy Workflow YAML</button>
                     </div>
                 </div>
             </div>
             
-            <!-- AI Assistant Chat Tab -->
-
             <div class="tab-pane fade" id="chat" role="tabpanel" aria-labelledby="chat-tab">
-                <div class="d-flex justify-content-between mb-3">
-                    <h3>Chat with AI Human Agent</h3>
-                    <button class="btn btn-outline-secondary">Clear Conversation</button>
-                </div>
-                
+                <!-- Chat content -->
                 <div class="card">
+                    <div class="card-header">
+                        AI Assistant Chat
+                    </div>
                     <div class="card-body">
-                        <div class="chat-container">
+                        <div class="chat-container" id="chat-container">
                             <div class="chat-message ai">
-                                <strong>AI:</strong> Hello! I'm your AI Human Agent. How can I help you with your project today?
+                                <strong>AI Assistant:</strong> Hello! I'm your PR-Agent assistant. How can I help you today?
                             </div>
                             <div class="chat-message user">
-                                <strong>You:</strong> I need to create a new e-commerce platform with user authentication, product catalog, and payment processing.
+                                <strong>You:</strong> Can you help me set up a PR review workflow?
                             </div>
                             <div class="chat-message ai">
-                                <strong>AI:</strong> I'll help you set that up. Let me break this down into tasks:<br>
-                                1. Set up user authentication system<br>
-                                2. Create product catalog with search and filtering<br>
-                                3. Implement shopping cart functionality<br>
-                                4. Set up payment processing with Stripe and PayPal<br>
-                                5. Create order management system<br><br>
-                                Does this cover your requirements? Would you like to add anything else?
+                                <strong>AI Assistant:</strong> Of course! I can help you set up a PR review workflow. Would you like me to generate a GitHub Actions workflow file for you?
                             </div>
                         </div>
                         
                         <div class="input-group">
-                            <input type="text" class="form-control" placeholder="Type your message here...">
-                            <button class="btn btn-primary">Send</button>
+                            <input type="text" class="form-control" placeholder="Type your message..." id="chat-input">
+                            <button class="btn btn-primary" id="send-message">Send</button>
+                        </div>
+                        
+                        <div class="d-grid gap-2 mt-3">
+                            <button class="btn btn-primary">Ask AI to Generate Tasks</button>
                         </div>
                     </div>
-                </div>
-            </div>
-            
-            <div class="tab-pane fade" id="requirements" role="tabpanel" aria-labelledby="requirements-tab">
-                <div class="d-flex justify-content-between mb-3">
-                    <h3>Project Requirements</h3>
-                    <div>
-                        <button class="btn btn-outline-primary">+ Add</button>
-                        <button class="btn btn-outline-secondary">Edit</button>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <div class="card-body">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Requirement</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>User authentication system with social login</td>
-                                    <td><span class="badge bg-success">Implemented</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">Edit</button>
-                                        <button class="btn btn-sm btn-outline-danger">Delete</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Product catalog with filtering and search</td>
-                                    <td><span class="badge bg-warning">In Progress</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">Edit</button>
-                                        <button class="btn btn-sm btn-outline-danger">Delete</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Shopping cart functionality</td>
-                                    <td><span class="badge bg-secondary">Planned</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">Edit</button>
-                                        <button class="btn btn-sm btn-outline-danger">Delete</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Payment processing (Stripe & PayPal)</td>
-                                    <td><span class="badge bg-light text-dark">Not Started</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">Edit</button>
-                                        <button class="btn btn-sm btn-outline-danger">Delete</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Order management system</td>
-                                    <td><span class="badge bg-light text-dark">Not Started</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">Edit</button>
-                                        <button class="btn btn-sm btn-outline-danger">Delete</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Admin dashboard</td>
-                                    <td><span class="badge bg-light text-dark">Not Started</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">Edit</button>
-                                        <button class="btn btn-sm btn-outline-danger">Delete</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Mobile-responsive design</td>
-                                    <td><span class="badge bg-warning">In Progress</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">Edit</button>
-                                        <button class="btn btn-sm btn-outline-danger">Delete</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Performance optimization</td>
-                                    <td><span class="badge bg-light text-dark">Not Started</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary">Edit</button>
-                                        <button class="btn btn-sm btn-outline-danger">Delete</button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                
-                <div class="d-grid gap-2 mt-3">
-                    <button class="btn btn-primary">Ask AI to Generate Tasks</button>
                 </div>
             </div>
         </div>
@@ -714,7 +432,7 @@
         <div class="settings-dialog-content">
             <div class="settings-dialog-header">
                 <h4>Settings</h4>
-                <span class="settings-dialog-close">&times;</span>
+                <span class="settings-dialog-close">×</span>
             </div>
             <div class="settings-form">
                 <div class="settings-form-group">
@@ -886,3 +604,4 @@
     </script>
 </body>
 </html>
+
