@@ -1,109 +1,128 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useApi } from './ApiContext';
 
 interface Settings {
-  GITHUB_TOKEN?: string;
-  SUPABASE_URL?: string;
-  SUPABASE_ANON_KEY?: string;
-  [key: string]: string | undefined;
+  githubToken: string;
+  supabaseUrl: string;
+  supabaseApiKey: string;
+  refreshInterval: number;
+  autoRefresh: boolean;
+  theme: 'light' | 'dark';
 }
 
 interface SettingsContextType {
   settings: Settings;
-  saveSettings: (newSettings: Settings) => Promise<boolean>;
-  validateSettings: (settingsToValidate: Settings) => Promise<{ valid: boolean; message?: string }>;
-  loading: boolean;
+  updateSettings: (newSettings: Partial<Settings>) => void;
+  saveSettings: () => Promise<void>;
+  validateSettings: () => Promise<{ valid: boolean; message?: string }>;
+  isLoading: boolean;
   error: string | null;
 }
+
+const defaultSettings: Settings = {
+  githubToken: '',
+  supabaseUrl: '',
+  supabaseApiKey: '',
+  refreshInterval: 30000,
+  autoRefresh: true,
+  theme: 'light',
+};
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [settings, setSettings] = useState<Settings>({});
-  const [loading, setLoading] = useState(false);
+  const [settings, setSettings] = useState<Settings>(defaultSettings);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { api } = useApi();
 
-  // Load settings from localStorage on initial render
+  // Load settings from localStorage on mount
   useEffect(() => {
-    const loadLocalSettings = () => {
-      const githubApiKey = localStorage.getItem('github-api-key') || '';
-      const supabaseUrl = localStorage.getItem('supabase-url') || '';
-      const supabaseApiKey = localStorage.getItem('supabase-api-key') || '';
-      
-      setSettings({
-        GITHUB_TOKEN: githubApiKey,
-        SUPABASE_URL: supabaseUrl,
-        SUPABASE_ANON_KEY: supabaseApiKey
-      });
+    const loadSettings = () => {
+      try {
+        const savedSettings = localStorage.getItem('pr-agent-settings');
+        if (savedSettings) {
+          const parsedSettings = JSON.parse(savedSettings);
+          setSettings(prevSettings => ({
+            ...prevSettings,
+            ...parsedSettings,
+          }));
+        }
+      } catch (err) {
+        console.error('Error loading settings:', err);
+        setError('Failed to load settings from local storage');
+      }
     };
 
-    loadLocalSettings();
-    fetchSettings();
+    loadSettings();
   }, []);
 
-  const fetchSettings = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await api.get('/api/v1/settings');
-      setSettings(response.data);
-    } catch (err) {
-      console.error('Error fetching settings:', err);
-      setError('Failed to fetch settings');
-    } finally {
-      setLoading(false);
-    }
+  const updateSettings = (newSettings: Partial<Settings>) => {
+    setSettings(prevSettings => ({
+      ...prevSettings,
+      ...newSettings,
+    }));
   };
 
-  const saveSettings = async (newSettings: Settings): Promise<boolean> => {
-    setLoading(true);
+  const saveSettings = async () => {
+    setIsLoading(true);
     setError(null);
-    
+
     try {
       // Save to localStorage
-      if (newSettings.GITHUB_TOKEN) {
-        localStorage.setItem('github-api-key', newSettings.GITHUB_TOKEN);
-      }
-      if (newSettings.SUPABASE_URL) {
-        localStorage.setItem('supabase-url', newSettings.SUPABASE_URL);
-      }
-      if (newSettings.SUPABASE_ANON_KEY) {
-        localStorage.setItem('supabase-api-key', newSettings.SUPABASE_ANON_KEY);
-      }
-      
+      localStorage.setItem('pr-agent-settings', JSON.stringify(settings));
+
       // Save to server
-      await api.post('/api/v1/settings', newSettings);
-      
-      // Update state
-      setSettings(prev => ({ ...prev, ...newSettings }));
-      
-      return true;
-    } catch (err: any) {
+      await api.post('/api/v1/settings', {
+        GITHUB_TOKEN: settings.githubToken,
+        SUPABASE_URL: settings.supabaseUrl,
+        SUPABASE_ANON_KEY: settings.supabaseApiKey,
+        REFRESH_INTERVAL: settings.refreshInterval,
+        AUTO_REFRESH: settings.autoRefresh,
+      });
+
+      return Promise.resolve();
+    } catch (err) {
       console.error('Error saving settings:', err);
-      setError(err.response?.data?.message || 'Failed to save settings');
-      return false;
+      setError('Failed to save settings');
+      return Promise.reject(err);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const validateSettings = async (settingsToValidate: Settings): Promise<{ valid: boolean; message?: string }> => {
+  const validateSettings = async () => {
+    setIsLoading(true);
+    setError(null);
+
     try {
-      const response = await api.post('/api/v1/settings/validate', settingsToValidate);
+      const response = await api.post('/api/v1/settings/validate', {
+        GITHUB_TOKEN: settings.githubToken,
+        SUPABASE_URL: settings.supabaseUrl,
+        SUPABASE_ANON_KEY: settings.supabaseApiKey,
+      });
+
       return response.data;
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error validating settings:', err);
-      return { 
-        valid: false, 
-        message: err.response?.data?.message || 'Failed to validate settings' 
-      };
+      setError('Failed to validate settings');
+      return { valid: false, message: 'Failed to validate settings' };
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <SettingsContext.Provider value={{ settings, saveSettings, validateSettings, loading, error }}>
+    <SettingsContext.Provider
+      value={{
+        settings,
+        updateSettings,
+        saveSettings,
+        validateSettings,
+        isLoading,
+        error,
+      }}
+    >
       {children}
     </SettingsContext.Provider>
   );

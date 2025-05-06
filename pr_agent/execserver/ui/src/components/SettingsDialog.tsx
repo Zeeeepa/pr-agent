@@ -6,234 +6,153 @@ interface SettingsDialogProps {
 }
 
 const SettingsDialog: React.FC<SettingsDialogProps> = ({ onClose }) => {
-  const { settings, saveSettings, validateSettings } = useSettings();
-  
-  const [githubToken, setGithubToken] = useState(settings.GITHUB_TOKEN || '');
-  const [supabaseUrl, setSupabaseUrl] = useState(settings.SUPABASE_URL || '');
-  const [supabaseKey, setSupabaseKey] = useState(settings.SUPABASE_ANON_KEY || '');
-  
-  const [validationMessage, setValidationMessage] = useState('');
-  const [validationStatus, setValidationStatus] = useState<'success' | 'error' | ''>('');
-  const [isValidating, setIsValidating] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const { settings, updateSettings, saveSettings, validateSettings, isLoading } = useSettings();
+  const [validationMessage, setValidationMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
 
-  const handleValidate = async () => {
-    if (!supabaseUrl || !supabaseKey) {
-      setValidationMessage('Error: Supabase URL and API key are required');
-      setValidationStatus('error');
-      return;
-    }
-    
-    setIsValidating(true);
-    setValidationMessage('Validating settings...');
-    setValidationStatus('');
+  const handleSave = async () => {
+    setValidationMessage({ text: 'Saving settings...', type: 'info' });
     
     try {
-      const result = await validateSettings({
-        GITHUB_TOKEN: githubToken,
-        SUPABASE_URL: supabaseUrl,
-        SUPABASE_ANON_KEY: supabaseKey
-      });
+      await saveSettings();
+      setValidationMessage({ text: 'Settings saved successfully!', type: 'success' });
       
-      if (result.valid) {
-        setValidationMessage('Verified! All credentials are valid');
-        setValidationStatus('success');
-      } else {
-        setValidationMessage(`Error: ${result.message || 'Invalid credentials'}`);
-        setValidationStatus('error');
-      }
+      // Clear success message after a delay
+      setTimeout(() => {
+        setValidationMessage(null);
+        onClose();
+      }, 1500);
     } catch (err) {
-      console.error('Error validating settings:', err);
-      setValidationMessage('Error: An unexpected error occurred');
-      setValidationStatus('error');
-    } finally {
-      setIsValidating(false);
+      setValidationMessage({ text: 'Failed to save settings', type: 'error' });
     }
   };
 
-  const handleSave = async () => {
-    if (!supabaseUrl || !supabaseKey) {
-      setValidationMessage('Error: Supabase URL and API key are required');
-      setValidationStatus('error');
-      return;
-    }
-    
-    setIsSaving(true);
-    setValidationMessage('Saving settings...');
-    setValidationStatus('');
+  const handleValidate = async () => {
+    setValidationMessage({ text: 'Validating settings...', type: 'info' });
     
     try {
-      const success = await saveSettings({
-        GITHUB_TOKEN: githubToken,
-        SUPABASE_URL: supabaseUrl,
-        SUPABASE_ANON_KEY: supabaseKey
-      });
+      const result = await validateSettings();
       
-      if (success) {
-        setValidationMessage('Settings saved successfully');
-        setValidationStatus('success');
-        
-        // Close dialog after a short delay
-        setTimeout(() => {
-          onClose();
-        }, 1500);
+      if (result.valid) {
+        setValidationMessage({ text: 'Validation successful! All credentials are valid.', type: 'success' });
       } else {
-        setValidationMessage('Error: Failed to save settings');
-        setValidationStatus('error');
+        setValidationMessage({ 
+          text: result.message || 'Validation failed. Please check your credentials.', 
+          type: 'error' 
+        });
       }
     } catch (err) {
-      console.error('Error saving settings:', err);
-      setValidationMessage('Error: An unexpected error occurred');
-      setValidationStatus('error');
-    } finally {
-      setIsSaving(false);
+      setValidationMessage({ text: 'Failed to validate settings', type: 'error' });
     }
   };
 
   return (
-    <div 
-      className="settings-dialog" 
-      style={{ 
-        display: 'flex',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        zIndex: 2000,
-        justifyContent: 'center',
-        alignItems: 'center'
-      }}
-      onClick={onClose}
-    >
-      <div 
-        className="settings-dialog-content"
-        style={{
-          backgroundColor: 'var(--card-bg)',
-          color: 'var(--text-color)',
-          borderRadius: '10px',
-          padding: '20px',
-          width: '90%',
-          maxWidth: '500px',
-          boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)'
-        }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="settings-dialog-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h4 style={{ margin: 0 }}>Settings</h4>
-          <span 
-            className="settings-dialog-close" 
-            style={{ cursor: 'pointer', fontSize: '1.5rem' }}
-            onClick={onClose}
-          >
-            &times;
-          </span>
-        </div>
-        
-        <div className="settings-form-group" style={{ marginBottom: '15px' }}>
-          <label htmlFor="github-api-key" style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>
-            GitHub API Key
-          </label>
-          <input 
-            type="password" 
-            id="github-api-key" 
-            className="form-control" 
-            placeholder="Enter GitHub token (starts with ghp_ or github_pat_)"
-            value={githubToken}
-            onChange={e => setGithubToken(e.target.value)}
-          />
-          <small style={{ color: 'var(--secondary-color)' }}>
-            Personal access token with 'repo' scope
-          </small>
-        </div>
-        
-        <div className="settings-form-group" style={{ marginBottom: '15px' }}>
-          <label htmlFor="supabase-url" style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>
-            Supabase URL
-          </label>
-          <input 
-            type="text" 
-            id="supabase-url" 
-            className="form-control" 
-            placeholder="Enter Supabase URL (https://...)"
-            value={supabaseUrl}
-            onChange={e => setSupabaseUrl(e.target.value)}
-          />
-          <small style={{ color: 'var(--secondary-color)' }}>
-            URL from your Supabase project settings
-          </small>
-        </div>
-        
-        <div className="settings-form-group" style={{ marginBottom: '15px' }}>
-          <label htmlFor="supabase-api-key" style={{ display: 'block', marginBottom: '5px', fontWeight: 500 }}>
-            Supabase API Key
-          </label>
-          <input 
-            type="password" 
-            id="supabase-api-key" 
-            className="form-control" 
-            placeholder="Enter Supabase anon key (starts with ey...)"
-            value={supabaseKey}
-            onChange={e => setSupabaseKey(e.target.value)}
-          />
-          <small style={{ color: 'var(--secondary-color)' }}>
-            Anon key from your Supabase project settings
-          </small>
-        </div>
-        
-        {validationMessage && (
-          <div 
-            className={`validation-message ${validationStatus ? `validation-${validationStatus}` : ''}`}
-            style={{
-              marginTop: '10px',
-              padding: '8px',
-              borderRadius: '4px',
-              display: 'block',
-              backgroundColor: validationStatus === 'success' 
-                ? 'rgba(40, 167, 69, 0.2)' 
-                : validationStatus === 'error'
-                  ? 'rgba(220, 53, 69, 0.2)'
-                  : 'transparent',
-              color: validationStatus === 'success'
-                ? 'var(--success-color)'
-                : validationStatus === 'error'
-                  ? 'var(--danger-color)'
-                  : 'var(--text-color)',
-              border: validationStatus 
-                ? `1px solid var(--${validationStatus === 'success' ? 'success' : 'danger'}-color)` 
-                : 'none'
-            }}
-          >
-            {validationMessage}
+    <div className="modal" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <div className="modal-dialog modal-lg">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title">Settings</h5>
+            <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
-        )}
-        
-        <div className="settings-dialog-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-          <button 
-            className="btn btn-info"
-            onClick={handleValidate}
-            disabled={isValidating || isSaving}
-          >
-            {isValidating ? (
-              <>
+          <div className="modal-body">
+            <div className="mb-3">
+              <label htmlFor="github-token" className="form-label">GitHub API Token</label>
+              <input
+                type="password"
+                className="form-control"
+                id="github-token"
+                value={settings.githubToken}
+                onChange={(e) => updateSettings({ githubToken: e.target.value })}
+                placeholder="Enter GitHub API token"
+              />
+              <div className="form-text">Used for GitHub API access. Requires repo and workflow permissions.</div>
+            </div>
+            
+            <div className="mb-3">
+              <label htmlFor="supabase-url" className="form-label">Supabase URL</label>
+              <input
+                type="text"
+                className="form-control"
+                id="supabase-url"
+                value={settings.supabaseUrl}
+                onChange={(e) => updateSettings({ supabaseUrl: e.target.value })}
+                placeholder="https://your-project.supabase.co"
+              />
+            </div>
+            
+            <div className="mb-3">
+              <label htmlFor="supabase-key" className="form-label">Supabase Anon Key</label>
+              <input
+                type="password"
+                className="form-control"
+                id="supabase-key"
+                value={settings.supabaseApiKey}
+                onChange={(e) => updateSettings({ supabaseApiKey: e.target.value })}
+                placeholder="Enter Supabase anon key"
+              />
+            </div>
+            
+            <div className="mb-3">
+              <label htmlFor="refresh-interval" className="form-label">Refresh Interval (ms)</label>
+              <input
+                type="number"
+                className="form-control"
+                id="refresh-interval"
+                value={settings.refreshInterval}
+                onChange={(e) => updateSettings({ refreshInterval: parseInt(e.target.value) })}
+                min="5000"
+                step="1000"
+              />
+              <div className="form-text">How often to refresh data (minimum 5000ms)</div>
+            </div>
+            
+            <div className="mb-3 form-check">
+              <input
+                type="checkbox"
+                className="form-check-input"
+                id="auto-refresh"
+                checked={settings.autoRefresh}
+                onChange={(e) => updateSettings({ autoRefresh: e.target.checked })}
+              />
+              <label className="form-check-label" htmlFor="auto-refresh">Enable auto-refresh</label>
+            </div>
+            
+            {validationMessage && (
+              <div className={`alert alert-${validationMessage.type === 'success' ? 'success' : validationMessage.type === 'error' ? 'danger' : 'info'}`}>
+                {validationMessage.text}
+              </div>
+            )}
+          </div>
+          <div className="modal-footer">
+            <button 
+              type="button" 
+              className="btn btn-outline-secondary" 
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+            <button 
+              type="button" 
+              className="btn btn-outline-primary me-2" 
+              onClick={handleValidate}
+              disabled={isLoading}
+            >
+              {isLoading && validationMessage?.text === 'Validating settings...' ? (
                 <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                Validating...
-              </>
-            ) : 'Validate'}
-          </button>
-          <button 
-            className="btn btn-primary"
-            onClick={handleSave}
-            disabled={isValidating || isSaving}
-          >
-            {isSaving ? (
-              <>
+              ) : null}
+              Validate
+            </button>
+            <button 
+              type="button" 
+              className="btn btn-primary" 
+              onClick={handleSave}
+              disabled={isLoading}
+            >
+              {isLoading && validationMessage?.text === 'Saving settings...' ? (
                 <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                Saving...
-              </>
-            ) : 'Save'}
-          </button>
+              ) : null}
+              Save
+            </button>
+          </div>
         </div>
       </div>
     </div>

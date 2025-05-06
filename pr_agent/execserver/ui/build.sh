@@ -4,6 +4,9 @@
 
 echo "Building PR-Agent UI..."
 
+# Create static directory if it doesn't exist
+mkdir -p static
+
 # Install dependencies
 npm install
 
@@ -14,4 +17,3 @@ npm run build
 cp -r dist/* static/
 
 echo "Build complete!"
-

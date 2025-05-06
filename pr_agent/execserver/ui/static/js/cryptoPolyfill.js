@@ -104,4 +104,3 @@ const browserCrypto = {
 };
 
 export default browserCrypto;
-
