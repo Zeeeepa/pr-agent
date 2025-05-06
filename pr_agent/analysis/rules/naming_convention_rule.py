@@ -5,16 +5,18 @@ This rule checks if files and functions in the PR follow naming conventions.
 """
 
 import re
-from typing import Dict, Any, List
-from pr_agent.analysis.rule_engine import Rule
-from pr_agent.analysis.analysis_context import AnalysisContext
+from typing import Any, Dict, List
+
 from pr_agent.algo.types import FilePatchInfo
+from pr_agent.analysis.analysis_context import AnalysisContext
+from pr_agent.analysis.rule_engine import Rule
+
 
 class NamingConventionRule(Rule):
     """
     Rule that checks if files and functions in the PR follow naming conventions.
     """
-    
+
     def __init__(self):
         """Initialize the naming convention rule."""
         super().__init__(
@@ -22,43 +24,43 @@ class NamingConventionRule(Rule):
             description="Checks if files and functions follow naming conventions",
             priority=5
         )
-        
+
         # Define naming convention patterns
         self.python_file_pattern = re.compile(r'^[a-z][a-z0-9_]*\.py$')
         self.python_function_pattern = re.compile(r'def\s+([a-z][a-z0-9_]*)\s*\(')
         self.python_class_pattern = re.compile(r'class\s+([A-Z][a-zA-Z0-9]*)\s*[:\(]')
-        
+
         self.js_file_pattern = re.compile(r'^[a-z][a-zA-Z0-9]*\.(js|jsx|ts|tsx)$')
         self.js_function_pattern = re.compile(r'function\s+([a-z][a-zA-Z0-9]*)\s*\(')
         self.js_class_pattern = re.compile(r'class\s+([A-Z][a-zA-Z0-9]*)\s*[{\(]')
-        
+
     def run(self, context: AnalysisContext) -> Dict[str, Any]:
         """
         Run the rule on the given context.
-        
+
         Args:
             context: The analysis context
-            
+
         Returns:
             Dictionary containing the rule results
         """
         self.logger.info(f"Running {self.rule_id} rule")
-        
+
         # Get changed files
         changed_files = context.get_changed_files()
-        
+
         # Check naming conventions
         issues = []
         for file in changed_files:
             # Check file name convention
             file_issues = self._check_file_name(file)
             issues.extend(file_issues)
-            
+
             # Check function and class names
             if file.head_file:
                 content_issues = self._check_content(file)
                 issues.extend(content_issues)
-                
+
         # Return results
         return {
             'rule_id': self.rule_id,
@@ -66,20 +68,20 @@ class NamingConventionRule(Rule):
             'issues': issues,
             'passed': len(issues) == 0,
         }
-        
+
     def _check_file_name(self, file: FilePatchInfo) -> List[Dict[str, Any]]:
         """
         Check if a file name follows naming conventions.
-        
+
         Args:
             file: The file to check
-            
+
         Returns:
             List of issues found
         """
         issues = []
         filename = file.filename.split('/')[-1]
-        
+
         if filename.endswith('.py') and not self.python_file_pattern.match(filename):
             issues.append({
                 'file': file.filename,
@@ -94,23 +96,23 @@ class NamingConventionRule(Rule):
                 'severity': 'low',
                 'line': None,
             })
-            
+
         return issues
-        
+
     def _check_content(self, file: FilePatchInfo) -> List[Dict[str, Any]]:
         """
         Check if function and class names in a file follow naming conventions.
-        
+
         Args:
             file: The file to check
-            
+
         Returns:
             List of issues found
         """
         issues = []
         content = file.head_file
         filename = file.filename
-        
+
         if filename.endswith('.py'):
             # Check Python function names
             for line_num, line in enumerate(content.splitlines(), 1):
@@ -123,7 +125,7 @@ class NamingConventionRule(Rule):
                             'severity': 'low',
                             'line': line_num,
                         })
-                
+
                 # Check Python class names
                 class_matches = self.python_class_pattern.findall(line)
                 for class_name in class_matches:
@@ -134,7 +136,7 @@ class NamingConventionRule(Rule):
                             'severity': 'low',
                             'line': line_num,
                         })
-                        
+
         elif any(filename.endswith(ext) for ext in ['.js', '.jsx', '.ts', '.tsx']):
             # Check JavaScript/TypeScript function names
             for line_num, line in enumerate(content.splitlines(), 1):
@@ -147,7 +149,7 @@ class NamingConventionRule(Rule):
                             'severity': 'low',
                             'line': line_num,
                         })
-                
+
                 # Check JavaScript/TypeScript class names
                 class_matches = self.js_class_pattern.findall(line)
                 for class_name in class_matches:
@@ -158,6 +160,6 @@ class NamingConventionRule(Rule):
                             'severity': 'low',
                             'line': line_num,
                         })
-                        
+
         return issues
 

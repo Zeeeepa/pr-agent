@@ -6,7 +6,7 @@ This module provides components for analyzing pull requests and identifying pote
 
 from pr_agent.analysis.analysis_context import AnalysisContext
 from pr_agent.analysis.pr_analyzer import PRAnalyzer
-from pr_agent.analysis.rule_engine import RuleEngine, Rule
+from pr_agent.analysis.rule_engine import Rule, RuleEngine
 
 __all__ = ["AnalysisContext", "PRAnalyzer", "RuleEngine", "Rule"]
 
