@@ -19,6 +19,7 @@ from pr_agent.tools.pr_line_questions import PR_LineQuestions
 from pr_agent.tools.pr_questions import PRQuestions
 from pr_agent.tools.pr_reviewer import PRReviewer
 from pr_agent.tools.pr_similar_issue import PRSimilarIssue
+from pr_agent.tools.pr_static_analysis import PRStaticAnalysis
 from pr_agent.tools.pr_update_changelog import PRUpdateChangelog
 
 command2class = {
@@ -41,6 +42,8 @@ command2class = {
     "add_docs": PRAddDocs,
     "generate_labels": PRGenerateLabels,
     "help_docs": PRHelpDocs,
+    "analyze": PRStaticAnalysis,
+    "static_analysis": PRStaticAnalysis,
 }
 
 commands = list(command2class.keys())
