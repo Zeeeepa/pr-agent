@@ -146,9 +146,7 @@ markdown_extensions:
   - pymdownx.mark
   - md_in_html
   - attr_list
-  - pymdownx.emoji:
-      emoji_index: !!python/name:material.extensions.emoji.twemoji
-      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.emoji
   - pymdownx.tabbed:
       alternate_style: true
   - toc:
@@ -159,3 +157,4 @@ markdown_extensions:
 
 copyright: |
   &copy; 2025 <a href="https://www.codium.ai/"  target="_blank" rel="noopener">QodoAI</a>
+

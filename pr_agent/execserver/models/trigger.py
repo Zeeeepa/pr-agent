@@ -1,6 +1,7 @@
-from typing import Dict, Any, Optional, List, Union
-from pydantic import BaseModel, Field
 from enum import Enum
+from typing import Any, Dict, List, Optional, Union
+
+from pydantic import BaseModel, Field
 
 
 class TriggerType(str, Enum):
@@ -55,7 +56,7 @@ class Trigger(BaseModel):
     conditions: List[TriggerCondition] = Field(..., description="Conditions that will fire this trigger")
     actions: List[TriggerAction] = Field(..., description="Actions to take when the trigger fires")
     enabled: bool = Field(default=True, description="Whether this trigger is enabled")
-    
+
     class Config:
         schema_extra = {
             "example": {

@@ -6,7 +6,9 @@ leveraging the PR-Agent's configuration system.
 """
 
 import os
+
 from dotenv import load_dotenv
+
 from pr_agent.config_loader import config_manager
 from pr_agent.error_handler import ConfigurationError
 
@@ -20,22 +22,22 @@ CONFIG_DEFAULTS = {
     "GITHUB_APP_ID": None,
     "GITHUB_APP_PRIVATE_KEY": None,
     "GITHUB_APP_INSTALLATION_ID": None,
-    
+
     # Database configuration
     "SUPABASE_URL": None,
     "SUPABASE_ANON_KEY": None,
-    
+
     # UI configuration
     "UI_PORT": 8000,
     "API_PORT": 8001,
-    
+
     # Notification configuration
     "ENABLE_NOTIFICATIONS": False,
-    
+
     # Security configuration
     "WEBHOOK_SECRET": None,
     "CORS_ORIGINS": ["*"],  # Default to allow all origins (for development)
-    
+
     # Logging configuration
     "LOG_LEVEL": "INFO",
     "LOG_FORMAT": "CONSOLE",
@@ -53,14 +55,14 @@ def set_settings_service(settings_service):
 def get_config(key, default=None):
     """
     Get a configuration value with proper error handling.
-    
+
     Args:
         key: Configuration key
         default: Default value if not found
-        
+
     Returns:
         Configuration value
-        
+
     Raises:
         ConfigurationError: If the key is required but not found
     """
@@ -70,11 +72,11 @@ def get_config(key, default=None):
         value = _settings_service.get_setting(key)
         if value is not None:
             return value
-    
+
     # Use the default from CONFIG_DEFAULTS if provided
     if default is None and key in CONFIG_DEFAULTS:
         default = CONFIG_DEFAULTS[key]
-    
+
     # Handle the case where default is a list (like CORS_ORIGINS)
     if isinstance(default, list):
         value = os.getenv(key)
@@ -82,14 +84,14 @@ def get_config(key, default=None):
             # Parse comma-separated string into list if from environment
             return [item.strip() for item in value.split(',')]
         return default
-        
+
     value = config_manager.get(key, default)
-    
+
     # Raise error if value is required but not found
     # GitHub App ID, Private Key, and Installation ID are optional
     if value is None and default is None and key not in ["GITHUB_APP_ID", "GITHUB_APP_PRIVATE_KEY", "GITHUB_APP_INSTALLATION_ID", "SUPABASE_URL", "SUPABASE_ANON_KEY"]:
         raise ConfigurationError(f"Required configuration '{key}' not found")
-        
+
     return value
 
 
@@ -168,11 +170,11 @@ def get_log_format():
 def get_setting_or_env(key, default=None):
     """
     Get a setting from environment variables or PR-Agent config
-    
+
     Args:
         key (str): The key to look for
         default: Default value if key is not found
-        
+
     Returns:
         The value of the setting or default
     """
