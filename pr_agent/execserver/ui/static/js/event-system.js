@@ -42,6 +42,12 @@ const ACTION_TYPES = {
 
 // Initialize the event system
 document.addEventListener('DOMContentLoaded', function() {
+    // Check if we're using the React app
+    if (document.getElementById('root')) {
+        console.log('React app detected, skipping legacy event system initialization');
+        return;
+    }
+    
     // Initialize the dashboard
     initializeEventSystem();
     
@@ -312,7 +318,7 @@ function updateTriggersTable(triggers) {
                 <td><span class="${trigger.enabled ? 'status-active' : 'status-inactive'}">${trigger.enabled ? 'Active' : 'Inactive'}</span></td>
                 <td>
                     <button class="btn btn-sm btn-outline-primary" onclick="editTrigger('${trigger.id}')">Edit</button>
-                    <button class="btn btn-sm btn-outline-${trigger.enabled ? 'danger' : 'success'}" onclick="toggleTrigger('${trigger.id}', ${!trigger.enabled})">
+                    <button class="btn btn-sm btn-outline-${trigger.enabled ? 'danger' : 'success'}" onclick="toggleTrigger('${trigger.id}', ${trigger.enabled})">
                         ${trigger.enabled ? 'Disable' : 'Enable'}
                     </button>
                 </td>
@@ -326,53 +332,49 @@ function updateTriggersTable(triggers) {
 }
 
 /**
- * Update the system status display
+ * Show loading state in a container
+ * @param {string} containerId - ID of the container element
  */
-function updateSystemStatus() {
-    // This would fetch system status from the API
-    // For now, we'll just update the timestamp
-    updateLastUpdated();
-}
-
-/**
- * Show a loading indicator in a table
- * @param {string} tableBodyId - ID of the table body element
- */
-function showLoading(tableBodyId) {
-    const tableBody = document.getElementById(tableBodyId);
-    if (!tableBody) return;
+function showLoading(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
     
-    tableBody.innerHTML = '<tr><td colspan="5" class="text-center">Loading...</td></tr>';
+    container.innerHTML = '<tr><td colspan="5" class="text-center">Loading...</td></tr>';
 }
 
 /**
- * Show an error message in a table
- * @param {string} tableBodyId - ID of the table body element
+ * Show error message in a container
+ * @param {string} containerId - ID of the container element
  * @param {string} message - Error message to display
  */
-function showError(tableBodyId, message) {
-    const tableBody = document.getElementById(tableBodyId);
-    if (!tableBody) return;
+function showError(containerId, message) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
     
-    tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">${message}</td></tr>`;
+    container.innerHTML = `<tr><td colspan="5" class="text-center text-danger">${message}</td></tr>`;
 }
 
 /**
- * Show the create trigger modal
+ * Update system status
  */
-function showCreateTriggerModal() {
-    // This would show a modal for creating a new trigger
-    alert('Create Trigger Modal would show here');
-    // In a real implementation, this would open a modal with a form
-}
-
-/**
- * Show the connections diagram
- */
-function showConnectionsDiagram() {
-    // This would show a diagram of trigger connections
-    alert('Connections Diagram would show here');
-    // In a real implementation, this would open a modal with a visualization
+function updateSystemStatus() {
+    fetch(`${EVENT_SYSTEM.apiBaseUrl}/database/status`)
+        .then(response => response.json())
+        .then(data => {
+            const statusElement = document.querySelector('.status-active');
+            if (statusElement) {
+                if (data.status === 'connected') {
+                    statusElement.textContent = '● All systems operational';
+                    statusElement.className = 'status-active';
+                } else {
+                    statusElement.textContent = '● Database disconnected';
+                    statusElement.className = 'status-inactive';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error updating system status:', error);
+        });
 }
 
 /**
@@ -380,9 +382,7 @@ function showConnectionsDiagram() {
  * @param {string} eventId - ID of the event to view
  */
 function viewEventDetails(eventId) {
-    // This would show details for a specific event
     alert(`View details for event ${eventId}`);
-    // In a real implementation, this would open a modal with event details
 }
 
 /**
@@ -390,100 +390,110 @@ function viewEventDetails(eventId) {
  * @param {string} triggerId - ID of the trigger to edit
  */
 function editTrigger(triggerId) {
-    // This would open a form to edit a trigger
     alert(`Edit trigger ${triggerId}`);
-    // In a real implementation, this would open a modal with a form
 }
 
 /**
- * Toggle a trigger's enabled status
+ * Toggle a trigger's enabled state
  * @param {string} triggerId - ID of the trigger to toggle
- * @param {boolean} enabled - New enabled status
+ * @param {boolean} currentEnabled - Current enabled state
  */
-function toggleTrigger(triggerId, enabled) {
-    // This would update a trigger's enabled status
+function toggleTrigger(triggerId, currentEnabled) {
     fetch(`${EVENT_SYSTEM.apiBaseUrl}/triggers/${triggerId}`, {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ enabled: enabled })
+        body: JSON.stringify({
+            enabled: !currentEnabled
+        })
     })
     .then(response => response.json())
     .then(data => {
-        // Refresh the triggers table
+        // Refresh triggers
         fetchTriggers();
     })
     .catch(error => {
         console.error('Error toggling trigger:', error);
-        alert(`Failed to ${enabled ? 'enable' : 'disable'} trigger`);
+        alert('Failed to toggle trigger');
     });
 }
 
 /**
- * Apply filters to the triggers table
+ * Show create trigger modal
  */
-function applyTriggerFilters() {
-    const repository = document.getElementById('filter-repository').value;
-    const eventType = document.getElementById('filter-event-type').value;
-    const status = document.getElementById('filter-status').value;
-    
-    // Build the query string
-    let queryString = '';
-    if (repository) queryString += `&repository=${repository}`;
-    if (eventType) queryString += `&event_type=${eventType}`;
-    if (status) queryString += `&enabled=${status === 'active'}`;
-    
-    // Fetch filtered triggers
-    fetch(`${EVENT_SYSTEM.apiBaseUrl}/triggers?${queryString.substring(1)}`)
-        .then(response => response.json())
-        .then(data => {
-            updateTriggersTable(data);
-        })
-        .catch(error => {
-            console.error('Error applying filters:', error);
-        });
+function showCreateTriggerModal() {
+    alert('Create trigger modal');
 }
 
 /**
- * Reset filters on the triggers table
+ * Show connections diagram
+ */
+function showConnectionsDiagram() {
+    alert('Show connections diagram');
+}
+
+/**
+ * Apply trigger filters
+ */
+function applyTriggerFilters() {
+    alert('Apply trigger filters');
+}
+
+/**
+ * Reset trigger filters
  */
 function resetTriggerFilters() {
-    // Reset filter inputs
-    document.getElementById('filter-repository').value = '';
-    document.getElementById('filter-event-type').value = '';
-    document.getElementById('filter-status').value = '';
-    
-    // Fetch all triggers
-    fetchTriggers();
+    alert('Reset trigger filters');
 }
 
 /**
  * Initialize settings
  */
 function initializeSettings() {
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    
+    if (themeToggleBtn && themeIcon) {
+        const savedTheme = localStorage.getItem('theme') || 
+            (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        
+        if (savedTheme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            themeIcon.textContent = '☀️';
+        }
+        
+        themeToggleBtn.addEventListener('click', function() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            if (newTheme === 'dark') {
+                themeIcon.textContent = '☀️';
+            } else {
+                themeIcon.textContent = '🌙';
+            }
+        });
+    }
+    
     // Load settings from localStorage
     const githubApiKey = localStorage.getItem('github-api-key') || '';
     const supabaseUrl = localStorage.getItem('supabase-url') || '';
     const supabaseApiKey = localStorage.getItem('supabase-api-key') || '';
     
-    // Set input values
-    document.getElementById('github-api-key').value = githubApiKey;
-    document.getElementById('supabase-url').value = supabaseUrl;
-    document.getElementById('supabase-api-key').value = supabaseApiKey;
+    const githubApiKeyInput = document.getElementById('github-api-key');
+    const supabaseUrlInput = document.getElementById('supabase-url');
+    const supabaseApiKeyInput = document.getElementById('supabase-api-key');
     
-    // If we have settings, send them to the server
-    if (supabaseUrl && supabaseApiKey) {
-        saveSettingsToServer({
-            GITHUB_TOKEN: githubApiKey,
-            SUPABASE_URL: supabaseUrl,
-            SUPABASE_ANON_KEY: supabaseApiKey
-        });
-    }
+    if (githubApiKeyInput) githubApiKeyInput.value = githubApiKey;
+    if (supabaseUrlInput) supabaseUrlInput.value = supabaseUrl;
+    if (supabaseApiKeyInput) supabaseApiKeyInput.value = supabaseApiKey;
 }
 
 /**
- * Show the settings dialog
+ * Show settings dialog
  */
 function showSettingsDialog() {
     const settingsDialog = document.getElementById('settings-dialog');
@@ -493,7 +503,7 @@ function showSettingsDialog() {
 }
 
 /**
- * Hide the settings dialog
+ * Hide settings dialog
  */
 function hideSettingsDialog() {
     const settingsDialog = document.getElementById('settings-dialog');
@@ -506,11 +516,13 @@ function hideSettingsDialog() {
  * Validate settings
  */
 function validateSettings() {
-    const githubApiKey = document.getElementById('github-api-key').value;
-    const supabaseUrl = document.getElementById('supabase-url').value;
-    const supabaseApiKey = document.getElementById('supabase-api-key').value;
+    const githubApiKey = document.getElementById('github-api-key')?.value || '';
+    const supabaseUrl = document.getElementById('supabase-url')?.value || '';
+    const supabaseApiKey = document.getElementById('supabase-api-key')?.value || '';
     const validationMessage = document.getElementById('validation-message');
     const validateSpinner = document.getElementById('validate-spinner');
+    
+    if (!validationMessage || !validateSpinner) return;
     
     // Show loading state
     validationMessage.textContent = 'Validating settings...';
@@ -527,7 +539,7 @@ function validateSettings() {
         return;
     }
     
-    // Validate settings with the server
+    // Validate settings with API
     fetch(`${EVENT_SYSTEM.apiBaseUrl}/settings/validate`, {
         method: 'POST',
         headers: {
@@ -569,11 +581,13 @@ function validateSettings() {
  * Save settings
  */
 function saveSettings() {
-    const githubApiKey = document.getElementById('github-api-key').value;
-    const supabaseUrl = document.getElementById('supabase-url').value;
-    const supabaseApiKey = document.getElementById('supabase-api-key').value;
+    const githubApiKey = document.getElementById('github-api-key')?.value || '';
+    const supabaseUrl = document.getElementById('supabase-url')?.value || '';
+    const supabaseApiKey = document.getElementById('supabase-api-key')?.value || '';
     const validationMessage = document.getElementById('validation-message');
     const saveSpinner = document.getElementById('save-spinner');
+    
+    if (!validationMessage || !saveSpinner) return;
     
     // Show loading state
     validationMessage.textContent = 'Saving settings...';
@@ -596,66 +610,47 @@ function saveSettings() {
     localStorage.setItem('supabase-api-key', supabaseApiKey);
     
     // Save to server
-    saveSettingsToServer({
-        GITHUB_TOKEN: githubApiKey,
-        SUPABASE_URL: supabaseUrl,
-        SUPABASE_ANON_KEY: supabaseApiKey
-    })
-    .then(success => {
-        saveSpinner.classList.add('d-none');
-        
-        if (success) {
-            validationMessage.textContent = 'Settings saved successfully';
-            validationMessage.className = 'validation-message validation-success';
-            
-            // Check database status
-            checkDatabaseStatus();
-            
-            // Check migration status
-            checkMigrationStatus();
-            
-            setTimeout(() => {
-                validationMessage.style.display = 'none';
-            }, 2000);
-        } else {
-            validationMessage.textContent = 'Error: Failed to save settings';
-            validationMessage.className = 'validation-message validation-error';
-        }
-    })
-    .catch(error => {
-        saveSpinner.classList.add('d-none');
-        validationMessage.textContent = `Error: ${error.message || 'Failed to save settings'}`;
-        validationMessage.className = 'validation-message validation-error';
-    });
-}
-
-/**
- * Save settings to server
- * @param {Object} settings - Settings object
- * @returns {Promise<boolean>} - Promise resolving to success status
- */
-function saveSettingsToServer(settings) {
-    return fetch(`${EVENT_SYSTEM.apiBaseUrl}/settings`, {
+    fetch(`${EVENT_SYSTEM.apiBaseUrl}/settings`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify(settings)
+        body: JSON.stringify({
+            GITHUB_TOKEN: githubApiKey,
+            SUPABASE_URL: supabaseUrl,
+            SUPABASE_ANON_KEY: supabaseApiKey
+        })
     })
     .then(response => {
         if (!response.ok) {
             return response.json().then(data => {
-                throw new Error(data.detail || 'Failed to save settings');
+                throw new Error(data.detail?.message || 'Failed to save settings');
             });
         }
         return response.json();
     })
     .then(data => {
-        return true;
+        saveSpinner.classList.add('d-none');
+        validationMessage.textContent = 'Settings saved successfully';
+        validationMessage.className = 'validation-message validation-success';
+        validationMessage.style.display = 'block';
+        
+        // Check database status
+        checkDatabaseStatus();
+        
+        // Check migration status
+        checkMigrationStatus();
+        
+        setTimeout(() => {
+            validationMessage.style.display = 'none';
+        }, 2000);
     })
     .catch(error => {
-        console.error('Error saving settings to server:', error);
-        throw error;
+        console.error('Error saving settings:', error);
+        saveSpinner.classList.add('d-none');
+        validationMessage.textContent = `Error: ${error.message || 'Failed to save settings'}`;
+        validationMessage.className = 'validation-message validation-error';
+        validationMessage.style.display = 'block';
     });
 }
 
@@ -689,6 +684,8 @@ function checkMigrationStatus() {
     const migrationStatus = document.getElementById('migration-status');
     const migrationInfo = document.getElementById('migration-info');
     const applyMigrationsBtn = document.getElementById('apply-migrations');
+    
+    if (!migrationStatus || !migrationInfo || !applyMigrationsBtn) return;
     
     fetch(`${EVENT_SYSTEM.apiBaseUrl}/database/migrations`)
         .then(response => response.json())
@@ -755,6 +752,8 @@ function applyMigrations() {
     const migrationInfo = document.getElementById('migration-info');
     const migrationSpinner = document.getElementById('migration-spinner');
     
+    if (!migrationInfo || !migrationSpinner) return;
+    
     // Show loading state
     migrationSpinner.classList.remove('d-none');
     
@@ -771,7 +770,7 @@ function applyMigrations() {
             </div>`;
             
             // Hide apply migrations button after successful application
-            document.getElementById('apply-migrations').classList.add('d-none');
+            document.getElementById('apply-migrations')?.classList.add('d-none');
             
             // Refresh database status
             checkDatabaseStatus();
@@ -800,3 +799,5 @@ window.showSettingsDialog = showSettingsDialog;
 window.hideSettingsDialog = hideSettingsDialog;
 window.validateSettings = validateSettings;
 window.saveSettings = saveSettings;
+window.applyMigrations = applyMigrations;
+
