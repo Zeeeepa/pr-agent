@@ -355,7 +355,26 @@ class GithubProvider(GitProvider):
     def publish_description(self, pr_title: str, pr_body: str):
         self.pr.edit(title=pr_title, body=pr_body)
 
+    def get_latest_commit_sha(self) -> str:
+        """
+        Get the SHA of the latest commit in the PR.
+        
+        Returns:
+            str: SHA of the latest commit
+        """
+        if hasattr(self, 'pr') and self.pr:
+            commits = list(self.pr.get_commits())
+            if commits:
+                return commits[-1].sha
+        return ""
+
     def get_latest_commit_url(self) -> str:
+        """
+        Get the URL of the latest commit in the PR.
+        
+        Returns:
+            str: URL of the latest commit
+        """
         return self.last_commit_id.html_url
 
     def get_comment_url(self, comment) -> str:
@@ -1223,3 +1242,14 @@ class GithubProvider(GitProvider):
             clone_url += "git:"
         clone_url += f"{github_token}@{github_com}{repo_full_name}"
         return clone_url
+
+    def get_repo_name(self) -> str:
+        """
+        Get the repository name in the format "owner/repo".
+        
+        Returns:
+            str: Repository name in the format "owner/repo"
+        """
+        if hasattr(self, 'repo') and self.repo:
+            return self.repo
+        return ""

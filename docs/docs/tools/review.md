@@ -116,6 +116,31 @@ extra_instructions = "..."
       </tr>
     </table>
 
+## Configuration Options
+
+The PR reviewer can be configured with various options to customize its behavior. These options can be set in the configuration file.
+
+### Comment Trigger Options
+
+PR-Agent provides configurable triggers for when automated comments should be posted to PRs, allowing users to control the frequency and conditions of automated feedback.
+
+The comment trigger options can be configured in your `settings.toml` file under the `pr_reviewer` section:
+
+```toml
+[pr_reviewer]
+# ... other settings ...
+comment_trigger = "ALWAYS" # Options: "ALWAYS", "ONCE_PER_PR", "AFTER_CHANGES"
+# ... other settings ...
+```
+
+Available trigger options:
+
+1. **ALWAYS** (default): Post comments on every PR review request, regardless of previous comments.
+2. **ONCE_PER_PR**: Post a comment only once per PR, even if the PR is updated with new commits.
+3. **AFTER_CHANGES**: Post a comment when the PR is first created and then only when new commits are added to the PR.
+
+For more details, see the [Comment Triggers documentation](../COMMENT_TRIGGERS.md).
+
 ## Usage Tips
 
 !!! tip "General guidelines"
