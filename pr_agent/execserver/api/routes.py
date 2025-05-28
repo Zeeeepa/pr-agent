@@ -132,6 +132,40 @@ async def get_settings():
         logger.error(f"Error getting settings: {str(e)}")
         raise HTTPException(status_code=500, detail={"message": f"Failed to get settings: {str(e)}", "code": "server_error"})
 
+# Client-side error logging endpoint
+@router.post("/api/v1/log")
+async def log_client_error(request: Request):
+    """
+    Log client-side errors
+    """
+    try:
+        # Get the request body
+        data = await request.json()
+        
+        # Extract error information
+        error_type = data.get('type', 'unknown')
+        message = data.get('message', 'No message provided')
+        source = data.get('source', 'Unknown source')
+        timestamp = data.get('timestamp', None)
+        
+        # Log the error with appropriate context
+        logger.error(f"Client Error [{error_type}]: {message}", {
+            "source": source,
+            "timestamp": timestamp,
+            "clientIp": request.client.host if request.client else None,
+            "userAgent": request.headers.get('user-agent'),
+            "stack": data.get('stack', None),
+            "lineno": data.get('lineno', None),
+            "colno": data.get('colno', None),
+            "resource_type": data.get('resource_type', None),
+            "resource_url": data.get('resource_url', None)
+        })
+        
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Error in logging client error: {str(e)}")
+        return {"success": False, "error": "Failed to log error"}
+
 # Database status endpoint
 @router.get("/api/v1/database/status")
 async def get_database_status():
