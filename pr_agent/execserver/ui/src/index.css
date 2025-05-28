@@ -1,0 +1,38 @@
+:root {
+  --bg-color: #212529;
+  --text-color: #f8f9fa;
+  --card-bg: #343a40;
+  --card-header-bg: #2c3136;
+  --border-color: #495057;
+  --chat-ai-bg: #2c3136;
+  --chat-user-bg: #343a40;
+  --primary-color: #0d6efd;
+  --success-color: #28a745;
+  --danger-color: #dc3545;
+  --secondary-color: #adb5bd;
+  --info-color: #0dcaf0;
+  --warning-color: #ffc107;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding-top: 20px;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: all 0.3s ease;
+}
+
+.card {
+  margin-bottom: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+}
+
+.card-header {
+  background-color: var(--card-header-bg);
+  font-weight: bold;
+  border-bottom-color: var(--border-color);
+}
+
