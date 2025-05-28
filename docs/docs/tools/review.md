@@ -70,6 +70,10 @@ extra_instructions = "..."
         <td><b>enable_help_text</b></td>
         <td>If set to true, the tool will display a help text in the comment. Default is true.</td>
       </tr>
+      <tr>
+        <td><b>num_max_findings</b></td>
+        <td>Number of maximum returned findings. Default is 3.</td>
+      </tr>
     </table>
 
 !!! example "Enable\\disable specific sub-sections"
@@ -112,13 +116,15 @@ extra_instructions = "..."
       </tr>
       <tr>
         <td><b>enable_review_labels_effort</b></td>
-        <td>If set to true, the tool will publish a 'Review effort [1-5]: x' label. Default is true.</td>
+        <td>If set to true, the tool will publish a 'Review effort x/5' label (1–5 scale). Default is true.</td>
       </tr>
     </table>
 
 ## Usage Tips
 
-!!! tip "General guidelines"
+### General guidelines
+
+!!! tip ""
 
     The `review` tool provides a collection of configurable feedbacks about a PR.
     It is recommended to review the [Configuration options](#configuration-options) section, and choose the relevant options for your use case.
@@ -128,7 +134,9 @@ extra_instructions = "..."
 
     On the other hand, if you find one of the enabled features to be irrelevant for your use case, disable it. No default configuration can fit all use cases.
 
-!!! tip "Automation"
+### Automation
+
+!!! tip ""
     When you first install Qodo Merge app, the [default mode](../usage-guide/automations_and_usage.md#github-app-automatic-tools-when-a-new-pr-is-opened) for the `review` tool is:
     ```
     pr_commands = ["/review", ...]
@@ -136,16 +144,20 @@ extra_instructions = "..."
     Meaning the `review` tool will run automatically on every PR, without any additional configurations.
     Edit this field to enable/disable the tool, or to change the configurations used.
 
-!!! tip "Possible labels from the review tool"
+### Auto-generated PR labels from the Review Tool
 
-    The `review` tool can auto-generate two specific types of labels for a PR:
+!!! tip ""
 
-    - a `possible security issue` label that detects if a possible [security issue](https://github.com/Codium-ai/pr-agent/blob/tr/user_description/pr_agent/settings/pr_reviewer_prompts.toml#L136) exists in the PR code (`enable_review_labels_security` flag)
-    - a `Review effort [1-5]: x` label, where x is the estimated effort to review the PR (`enable_review_labels_effort` flag)
+    The `review` tool automatically adds two specific labels to your Pull Requests:
 
-    Both modes are useful, and we recommended to enable them.
+    - **`possible security issue`**: This label is applied if the tool detects a potential [security vulnerability](https://github.com/qodo-ai/pr-agent/blob/main/pr_agent/settings/pr_reviewer_prompts.toml#L103) in the PR's code. This feedback is controlled by the 'enable_review_labels_security' flag.
+    - **`review effort [x/5]`**: This label estimates the [effort](https://github.com/qodo-ai/pr-agent/blob/main/pr_agent/settings/pr_reviewer_prompts.toml#L90) required to review the PR on a relative scale of 1 to 5, where 'x' represents the assessed effort. This feedback is controlled by the 'enable_review_labels_effort' flag.
 
-!!! tip "Extra instructions"
+    Note: The `possible security issue` label highlights potential security risks. You can configure a GitHub Action to [prevent merging](https://medium.com/sequra-tech/quick-tip-block-pull-request-merge-using-labels-6cc326936221) PRs that have this label.
+
+### Extra instructions
+
+!!! tip "" 
 
     Extra instructions are important.
     The `review` tool can be configured with extra instructions, which can be used to guide the model to a feedback tailored to the needs of your project.
@@ -164,7 +176,3 @@ extra_instructions = "..."
     """
     ```
     Use triple quotes to write multi-line instructions. Use bullet points to make the instructions more readable.
-
-!!! tip  "Code suggestions"
-
-    The `review` tool previously included a legacy feature for providing code suggestions (controlled by `--pr_reviewer.num_code_suggestion`). This functionality has been deprecated and replaced by the [`improve`](./improve.md) tool, which offers higher quality and more actionable code suggestions.
