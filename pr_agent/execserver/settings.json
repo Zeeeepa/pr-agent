@@ -1,0 +1,14 @@
+{
+  "ENABLE_NOTIFICATIONS": false,
+  "UI_THEME": "system",
+  "UI_LANGUAGE": "en",
+  "ENVIRONMENT": "development",
+  "LOG_LEVEL": "INFO",
+  "LOG_FORMAT": "CONSOLE",
+  "UI_PORT": 8000,
+  "API_PORT": 8001,
+  "CORS_ORIGINS": ["*"],
+  "COMMENT_STYLE": "detailed",
+  "MAX_COMMENT_LENGTH": 5000
+}
+
