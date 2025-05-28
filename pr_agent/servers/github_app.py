@@ -23,6 +23,7 @@ from pr_agent.identity_providers import get_identity_provider
 from pr_agent.identity_providers.identity_provider import Eligibility
 from pr_agent.log import LoggingFormat, get_logger, setup_logger
 from pr_agent.servers.utils import DefaultDictWithTimeout, verify_signature
+from pr_agent.servers.async_webhook_processor import get_webhook_processor, start_webhook_processor, WebhookStatus
 
 setup_logger(fmt=LoggingFormat.JSON, level=get_settings().get("CONFIG.LOG_LEVEL", "DEBUG"))
 base_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
@@ -33,6 +34,86 @@ if os.path.exists(build_number_path):
 else:
     build_number = "unknown"
 router = APIRouter()
+
+# Initialize the webhook processor on startup
+@router.on_event("startup")
+async def startup_event():
+    await start_webhook_processor()
+    
+    # Register handlers for GitHub webhooks
+    webhook_processor = get_webhook_processor()
+    
+    # Register handler for issue comments
+    webhook_processor.register_handler("github", "issue_comment", github_issue_comment_handler)
+    
+    # Register handler for pull request events
+    webhook_processor.register_handler("github", "pull_request", github_pull_request_handler)
+    
+    # Register handler for check run events
+    webhook_processor.register_handler("github", "check_run", github_check_run_handler)
+    
+    # Register fallback handler for other GitHub events
+    webhook_processor.register_handler("github", "*", github_fallback_handler)
+
+
+# Webhook handlers for asynchronous processing
+async def github_issue_comment_handler(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Handler for GitHub issue comment events."""
+    action = payload.get("action")
+    if action == "created":
+        agent = PRAgent()
+        log_context, sender, sender_id, sender_type = get_log_context(payload, "issue_comment", action, build_number)
+        
+        if is_bot_user(sender, sender_type):
+            get_logger().debug(f"Comment ignored: bot user detected")
+            return {"status": "ignored", "reason": "bot_user"}
+            
+        result = await handle_comments_on_pr(payload, "issue_comment", sender, sender_id, action, log_context, agent)
+        return {"status": "completed", "result": result}
+    
+    return {"status": "ignored", "reason": f"unsupported_action:{action}"}
+
+
+async def github_pull_request_handler(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Handler for GitHub pull request events."""
+    action = payload.get("action")
+    agent = PRAgent()
+    log_context, sender, sender_id, sender_type = get_log_context(payload, "pull_request", action, build_number)
+    
+    if is_bot_user(sender, sender_type):
+        get_logger().debug(f"PR event ignored: bot user detected")
+        return {"status": "ignored", "reason": "bot_user"}
+        
+    if not should_process_pr_logic(payload):
+        get_logger().debug(f"PR event ignored: PR logic filtering")
+        return {"status": "ignored", "reason": "pr_logic_filtering"}
+    
+    if action in ["opened", "reopened", "ready_for_review"]:
+        result = await handle_new_pr_opened(payload, "pull_request", sender, sender_id, action, log_context, agent)
+        return {"status": "completed", "result": result}
+    elif action == "synchronize":
+        result = await handle_push_trigger_for_new_commits(payload, "pull_request", sender, sender_id, action, log_context, agent)
+        return {"status": "completed", "result": result}
+    elif action == "closed":
+        if get_settings().get("CONFIG.ANALYTICS_FOLDER", ""):
+            handle_closed_pr(payload, "pull_request", action, log_context)
+        return {"status": "completed", "result": None}
+    
+    return {"status": "ignored", "reason": f"unsupported_action:{action}"}
+
+
+async def github_check_run_handler(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Handler for GitHub check run events."""
+    # Placeholder for check run handling
+    return {"status": "completed", "result": None}
+
+
+async def github_fallback_handler(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Fallback handler for other GitHub events."""
+    event = payload.get("event", "unknown")
+    action = payload.get("action", "unknown")
+    get_logger().info(f"Received unhandled GitHub event: {event}, action: {action}")
+    return {"status": "ignored", "reason": f"unsupported_event:{event}"}
 
 
 @router.post("/api/v1/github_webhooks")
@@ -50,14 +131,16 @@ async def handle_github_webhooks(background_tasks: BackgroundTasks, request: Req
     context["installation_id"] = installation_id
     context["settings"] = copy.deepcopy(global_settings)
     context["git_provider"] = {}
-    background_tasks.add_task(handle_request, body, event=request.headers.get("X-GitHub-Event", None))
-    return {}
-
-
-@router.post("/api/v1/marketplace_webhooks")
-async def handle_marketplace_webhooks(request: Request, response: Response):
-    body = await get_body(request)
-    get_logger().info(f'Request body:\n{body}')
+    
+    # Queue the webhook for asynchronous processing
+    event_type = request.headers.get("X-GitHub-Event", "unknown")
+    webhook_processor = get_webhook_processor()
+    webhook_id = await webhook_processor.enqueue_webhook("github", event_type, body)
+    
+    get_logger().info(f"Queued GitHub webhook {webhook_id} of type {event_type} for asynchronous processing")
+    
+    # Return immediately to prevent webhook timeout
+    return {"status": "queued", "webhook_id": webhook_id}
 
 
 async def get_body(request):
@@ -435,3 +518,26 @@ def start():
 
 if __name__ == '__main__':
     start()
+
+
+# Add a new endpoint to check webhook status
+@router.get("/api/v1/webhook_status/{webhook_id}")
+async def get_webhook_status(webhook_id: str):
+    """Get the status of a webhook processing task."""
+    webhook_processor = get_webhook_processor()
+    status = await webhook_processor.get_webhook_status(webhook_id)
+    
+    if status:
+        return status
+    
+    raise HTTPException(status_code=404, detail="Webhook not found")
+
+
+# Add a new endpoint to list all webhook statuses
+@router.get("/api/v1/webhook_statuses")
+async def list_webhook_statuses():
+    """List all webhook processing tasks."""
+    webhook_processor = get_webhook_processor()
+    statuses = await webhook_processor.get_all_webhook_statuses()
+    
+    return {"webhooks": statuses}
