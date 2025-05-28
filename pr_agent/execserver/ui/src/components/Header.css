@@ -1,0 +1,31 @@
+.header {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.header-title {
+  margin: 0;
+  font-size: 1.8rem;
+  color: var(--text-color);
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.nav-tabs {
+  max-width: 1200px;
+  margin: 20px auto 0;
+  padding: 0 20px;
+}
+

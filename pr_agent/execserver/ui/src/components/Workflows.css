@@ -1,0 +1,15 @@
+.workflows {
+  width: 100%;
+}
+
+.workflows-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.workflows-header h2 {
+  margin: 0;
+}
+
