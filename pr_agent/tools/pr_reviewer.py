@@ -23,6 +23,7 @@ from pr_agent.git_providers.git_provider import (IncrementalPR,
                                                  get_main_pr_language)
 from pr_agent.log import get_logger
 from pr_agent.servers.help import HelpMessage
+from pr_agent.tools.comment_tracker import comment_tracker
 from pr_agent.tools.ticket_pr_compliance_check import (
     extract_and_cache_pr_tickets, extract_tickets)
 
@@ -147,6 +148,23 @@ class PRReviewer:
                                     f"No files were changed since the [previous PR Review]({previous_review_url})")
                 return None
 
+            # Check if we should comment based on the trigger configuration
+            repo_name = self.git_provider.get_repo_name()
+            pr_id = str(self.git_provider.pr.number)
+            latest_commit_sha = self.git_provider.get_latest_commit_sha()
+            comment_trigger = get_settings().pr_reviewer.get('comment_trigger', 'ALWAYS')
+            
+            should_comment = comment_tracker.should_comment(
+                repo=repo_name,
+                pr_id=pr_id,
+                trigger=comment_trigger,
+                latest_commit_sha=latest_commit_sha
+            )
+            
+            if not should_comment:
+                get_logger().info(f"Skipping comment for PR {self.pr_url} based on trigger: {comment_trigger}")
+                return None
+
             if get_settings().config.publish_output and not get_settings().config.get('is_auto_command', False):
                 self.git_provider.publish_comment("Preparing review...", is_temporary=True)
 
@@ -169,6 +187,13 @@ class PRReviewer:
                 else:
                     self.git_provider.publish_comment(pr_review)
 
+                # Record that we commented on this PR
+                comment_tracker.record_comment(
+                    repo=repo_name,
+                    pr_id=pr_id,
+                    commit_sha=latest_commit_sha
+                )
+                
                 self.git_provider.remove_initial_comment()
             else:
                 get_logger().info("Review output is not published")
