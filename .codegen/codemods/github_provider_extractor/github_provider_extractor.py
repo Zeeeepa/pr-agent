@@ -103,7 +103,7 @@ def run(codebase: Codebase):
     standalone_code = generate_standalone_module(codebase, github_provider_class, existing_files)
     
     # Save the standalone module
-    output_file = "github_provider_standalone_gs.py"
+    output_file = "github_provider.py"
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(standalone_code)
     
@@ -126,7 +126,7 @@ def run(codebase: Codebase):
         'output_file': output_file
     }
     
-    summary_file = "gs_extraction_summary.json"
+    summary_file = "extraction_summary.json"
     with open(summary_file, 'w', encoding='utf-8') as f:
         json.dump(summary, f, indent=2, default=str)
     
