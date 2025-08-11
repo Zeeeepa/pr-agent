@@ -1,0 +1,51 @@
+{
+  "symbols": [
+    "from ..log import get_logger",
+    "from ..algo.language_handler import is_valid_file",
+    "from github.Issue import Issue",
+    "from .git_provider import (MAX_FILES_ALLOWED_FULL, FilePatchInfo, GitProvider,\n                           IncrementalPR)",
+    "from ..algo.git_patch_processing import extract_hunk_headers",
+    "from datetime import datetime",
+    "import copy",
+    "from starlette_context import context",
+    "from urllib.parse import urlparse",
+    "from ..config_loader import get_settings",
+    "import re",
+    "from ..algo.types import EDIT_TYPE",
+    "from pr_agent.algo.types import FilePatchInfo",
+    "import traceback",
+    "from ..algo.file_filter import filter_ignored",
+    "import difflib",
+    "class IncrementalPR:\n    def __init__(self, is_incremental: bool = False):\n        self.is_incremental = is_incremental\n        self.commits_range = None\n        self.first_new_commit = None\n        self.last_seen_commit = None\n\n    @property\n    def first_new_commit_sha(self):\n        return None if self.first_new_commit is None else self.first_new_commit.sha\n\n    @property\n    def last_seen_commit_sha(self):\n        return None if self.last_seen_commit is None else self.last_seen_commit.sha",
+    "GithubProvider",
+    "import hashlib",
+    "from github import AppAuthentication, Auth, Github, GithubException",
+    "import time",
+    "import itertools",
+    "from ..algo.utils import (PRReviewHeader, Range, clip_tokens,\n                          find_line_number_of_relevant_line_in_file,\n                          load_large_diff, set_file_languages)",
+    "import json",
+    "from ..servers.utils import RateLimitExceeded",
+    "from retry import retry",
+    "from typing import Optional, Tuple"
+  ],
+  "files": [
+    "pr_agent/algo/language_handler.py",
+    "pr_agent/servers/utils.py",
+    "pr_agent/algo/types.py",
+    "pr_agent/config_loader.py",
+    "pr_agent/log/__init__.py",
+    "pr_agent/algo/file_filter.py",
+    "pr_agent/algo/utils.py",
+    "pr_agent/git_providers/github_provider.py",
+    "pr_agent/algo/git_patch_processing.py",
+    "pr_agent/git_providers/git_provider.py"
+  ],
+  "dependencies": {
+    "get_diff_files": []
+  },
+  "stats": {
+    "total_symbols": 27,
+    "total_files": 10,
+    "dependency_relationships": 1
+  }
+}

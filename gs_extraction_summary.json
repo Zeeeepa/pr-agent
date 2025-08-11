@@ -1,0 +1,28 @@
+{
+  "extraction_method": "graph-sitter",
+  "codebase_stats": {
+    "total_files": 114,
+    "total_functions": 267,
+    "total_classes": 151,
+    "total_imports": 1373
+  },
+  "github_provider_analysis": {
+    "class_name": "GithubProvider",
+    "file_location": "/tmp/Zeeeepa/pr-agent/pr_agent/git_providers/github_provider.py",
+    "direct_dependencies": 38,
+    "usage_locations": 485
+  },
+  "required_files": [
+    "pr_agent/git_providers/github_provider.py",
+    "pr_agent/git_providers/git_provider.py",
+    "pr_agent/algo/types.py",
+    "pr_agent/algo/utils.py",
+    "pr_agent/algo/file_filter.py",
+    "pr_agent/algo/language_handler.py",
+    "pr_agent/algo/git_patch_processing.py",
+    "pr_agent/config_loader.py",
+    "pr_agent/log/__init__.py",
+    "pr_agent/servers/utils.py"
+  ],
+  "output_file": "github_provider_standalone_gs.py"
+}
