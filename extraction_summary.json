@@ -1,10 +1,10 @@
 {
   "extraction_method": "graph-sitter",
   "codebase_stats": {
-    "total_files": 114,
-    "total_functions": 267,
-    "total_classes": 151,
-    "total_imports": 1373
+    "total_files": 106,
+    "total_functions": 216,
+    "total_classes": 107,
+    "total_imports": 1139
   },
   "github_provider_analysis": {
     "class_name": "GithubProvider",
@@ -24,5 +24,5 @@
     "pr_agent/log/__init__.py",
     "pr_agent/servers/utils.py"
   ],
-  "output_file": "github_provider_standalone_gs.py"
+  "output_file": "github_provider.py"
 }
