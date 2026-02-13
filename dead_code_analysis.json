@@ -1,0 +1,308 @@
+{
+  "file_analyzed": "/tmp/Zeeeepa/pr-agent/github_provider.py",
+  "analysis_timestamp": "unknown",
+  "summary": {
+    "total_functions": 6,
+    "total_classes": 12,
+    "total_imports": 27,
+    "dead_functions": 0,
+    "dead_classes": 5,
+    "unused_imports": 0,
+    "unreachable_methods": 0,
+    "total_issues": 5
+  },
+  "dead_code": {
+    "functions": [],
+    "classes": [
+      {
+        "name": "Github",
+        "line": "unknown",
+        "type": "class"
+      },
+      {
+        "name": "GithubException",
+        "line": "unknown",
+        "type": "class"
+      },
+      {
+        "name": "Issue",
+        "line": "unknown",
+        "type": "class"
+      },
+      {
+        "name": "AppAuthentication",
+        "line": "unknown",
+        "type": "class"
+      },
+      {
+        "name": "Auth",
+        "line": "unknown",
+        "type": "class"
+      }
+    ],
+    "imports": [],
+    "methods": []
+  },
+  "active_code": {
+    "functions": [
+      {
+        "name": "get_settings",
+        "usages": 2,
+        "line": "unknown"
+      },
+      {
+        "name": "get_logger",
+        "usages": 1,
+        "line": "unknown"
+      },
+      {
+        "name": "is_valid_file",
+        "usages": 1,
+        "line": "unknown"
+      },
+      {
+        "name": "filter_ignored",
+        "usages": 1,
+        "line": "unknown"
+      },
+      {
+        "name": "clip_tokens",
+        "usages": 1,
+        "line": "unknown"
+      },
+      {
+        "name": "demo_github_provider",
+        "usages": 1,
+        "line": "unknown"
+      }
+    ],
+    "classes": [
+      {
+        "name": "EDIT_TYPE",
+        "usages": 6,
+        "line": "unknown"
+      },
+      {
+        "name": "FilePatchInfo",
+        "usages": 4,
+        "line": "unknown"
+      },
+      {
+        "name": "IncrementalPR",
+        "usages": 11,
+        "line": "unknown"
+      },
+      {
+        "name": "SimpleConfig",
+        "usages": 8,
+        "line": "unknown"
+      },
+      {
+        "name": "SimpleLogger",
+        "usages": 11,
+        "line": "unknown"
+      },
+      {
+        "name": "GitProvider",
+        "usages": 3,
+        "line": "unknown"
+      },
+      {
+        "name": "GithubProvider",
+        "usages": 63,
+        "line": "unknown"
+      }
+    ],
+    "imports": [
+      {
+        "module": "import os",
+        "symbols": [
+          "os"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "import sys",
+        "symbols": [
+          "sys"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "import json",
+        "symbols": [
+          "json"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "import re",
+        "symbols": [
+          "re"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "import time",
+        "symbols": [
+          "time"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "import logging",
+        "symbols": [
+          "logging"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "import copy",
+        "symbols": [
+          "copy"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "import difflib",
+        "symbols": [
+          "difflib"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "import hashlib",
+        "symbols": [
+          "hashlib"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "import itertools",
+        "symbols": [
+          "itertools"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "import traceback",
+        "symbols": [
+          "traceback"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "from datetime import datetime",
+        "symbols": [
+          "datetime"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "from typing import Optional, List, Dict, Any, Tuple",
+        "symbols": [
+          "Optional"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "from typing import Optional, List, Dict, Any, Tuple",
+        "symbols": [
+          "List"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "from typing import Optional, List, Dict, Any, Tuple",
+        "symbols": [
+          "Dict"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "from typing import Optional, List, Dict, Any, Tuple",
+        "symbols": [
+          "Any"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "from typing import Optional, List, Dict, Any, Tuple",
+        "symbols": [
+          "Tuple"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "from dataclasses import dataclass",
+        "symbols": [
+          "dataclass"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "from enum import Enum",
+        "symbols": [
+          "Enum"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "from abc import ABC, abstractmethod",
+        "symbols": [
+          "ABC"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "from abc import ABC, abstractmethod",
+        "symbols": [
+          "abstractmethod"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "from urllib.parse import urlparse",
+        "symbols": [
+          "urlparse"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "from github import Github, GithubException, AppAuthentication, Auth",
+        "symbols": [
+          "Github"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "from github import Github, GithubException, AppAuthentication, Auth",
+        "symbols": [
+          "GithubException"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "from github import Github, GithubException, AppAuthentication, Auth",
+        "symbols": [
+          "AppAuthentication"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "from github import Github, GithubException, AppAuthentication, Auth",
+        "symbols": [
+          "Auth"
+        ],
+        "line": "unknown"
+      },
+      {
+        "module": "from github.Issue import Issue",
+        "symbols": [
+          "Issue"
+        ],
+        "line": "unknown"
+      }
+    ]
+  }
+}
